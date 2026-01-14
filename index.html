@@ -140,4 +140,74 @@
             // 行動ガイドの反映
             const guideArea = document.getElementById('guideArea');
             const guideText = document.getElementById('actionGuideText');
-            guideText.innerText =
+            guideText.innerText = data.actionGuide;
+            guideArea.style.display = 'block';
+            const color = data.score >= 70 ? "#ef4444" : (data.score >= 40 ? "#f59e0b" : "#10b981");
+            guideArea.style.borderLeft = `6px solid ${color}`;
+
+            // 根拠の反映
+            const reasonArea = document.getElementById('reasonArea');
+            const reasonList = document.getElementById('reasonList');
+            reasonList.innerHTML = data.reasons.length > 0 ? data.reasons.map(r => `・ ${r}`).join('<br>') : "・ 異常なし (0点)";
+            reasonArea.style.display = 'block';
+
+            // 予報反映
+            document.getElementById('iconNow').innerText = getWeatherEmoji(data.forecast.nowDesc);
+            document.getElementById('windNow').innerText = data.windSpeed + "m";
+            document.getElementById('iconNight').innerText = getWeatherEmoji(data.forecast.nightDesc);
+            document.getElementById('windNight').innerText = data.forecast.night + "m";
+            document.getElementById('iconNext').innerText = getWeatherEmoji(data.forecast.tomorrowDesc);
+            document.getElementById('windNext').innerText = data.forecast.tomorrow + "m";
+
+            // AI推奨装備
+            document.getElementById('aiGearList').innerHTML = data.gearAdvice.map(a => `<div class="check-item" style="color:var(--warning)"><input type="checkbox"><span>${a}</span></div>`).join('');
+            document.getElementById('aiAdviceArea').style.display = 'block';
+
+            updateTheme(data.score);
+        } catch (e) { alert("データ取得に失敗しました。"); }
+        document.getElementById('loader').style.display = 'none';
+    }
+
+    function getWeatherEmoji(desc) {
+        if (desc.includes("晴")) return "☀️";
+        if (desc.includes("曇")) return "☁️";
+        if (desc.includes("雨")) return "☔";
+        return "⛅";
+    }
+
+    function updateTheme(score) {
+        myChart.data.datasets[0].data = [score, 100 - score];
+        const color = score >= 70 ? "#ef4444" : (score >= 40 ? "#f59e0b" : "#10b981");
+        myChart.data.datasets[0].backgroundColor[0] = color;
+        document.body.style.background = score >= 70 ? "#450a0a" : (score >= 40 ? "#0f172a" : "#064e3b");
+        myChart.update();
+    }
+
+    // --- ギアリスト管理 (ブラウザ保存) ---
+    function addMyGear() {
+        const input = document.getElementById('newGearInput');
+        if (!input.value) return;
+        let gears = JSON.parse(localStorage.getItem('myGears') || '[]');
+        gears.push({ name: input.value, checked: false });
+        localStorage.setItem('myGears', JSON.stringify(gears));
+        input.value = ''; renderMyGear();
+    }
+    function renderMyGear() {
+        const list = document.getElementById('myGearList');
+        let gears = JSON.parse(localStorage.getItem('myGears') || '[]');
+        list.innerHTML = gears.map((g, i) => `<div class="check-item"><input type="checkbox" ${g.checked ? 'checked' : ''} onchange="toggleMyGear(${i})"><span>${g.name}</span></div>`).join('');
+    }
+    function toggleMyGear(index) {
+        let gears = JSON.parse(localStorage.getItem('myGears') || '[]');
+        gears[index].checked = !gears[index].checked;
+        localStorage.setItem('myGears', JSON.stringify(gears));
+    }
+    async function useGPS() {
+        navigator.geolocation.getCurrentPosition(pos => {
+            document.getElementById('locInput').value = `${pos.coords.latitude},${pos.coords.longitude}`;
+            diagnose();
+        });
+    }
+</script>
+</body>
+</html>
