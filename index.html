@@ -3,85 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CampGuard Pro AI - Ver 3.6</title>
+    <title>CampGuard Pro - Expert</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         :root {
-            --bg: #0f172a;
-            --card: rgba(15, 23, 42, 0.9);
-            --accent: #38bdf8;
-            --danger: #dc2626;
-            --warning: #f59e0b;
-            --success: #10b981;
+            --bg: #0f172a; --card: rgba(30, 41, 59, 0.8);
+            --accent: #38bdf8; --danger: #ef4444; --warning: #f59e0b; --success: #10b981;
             --text: #f1f5f9;
         }
-
         body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            margin: 0; display: flex; justify-content: center; min-height: 100vh;
-            background-color: var(--bg) !important; color: var(--text);
-            transition: background-color 1.2s ease-in-out !important;
+            font-family: 'Inter', sans-serif; margin: 0; background-color: var(--bg); color: var(--text);
+            transition: background 1s ease; min-height: 100vh;
         }
+        .container { width: 100%; max-width: 480px; margin: 0 auto; padding: 20px; box-sizing: border-box; }
         
-        body.safe-bg { background-color: #064e3b !important; }
-        body.warning-bg { background-color: #431407 !important; }
-        body.danger-bg { background-color: #7f1d1d !important; }
-
-        .weather-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999 !important; }
-        .wind-line { position: absolute; background: rgba(255,255,255,0.4) !important; height: 1px; width: 120px; animation: windMove linear infinite; display: none; }
-        @keyframes windMove { 0% { transform: translateX(-100vw); opacity: 0; } 100% { transform: translateX(100vw); opacity: 0; } }
-
-        .container { width: 100%; max-width: 450px; padding: 25px; box-sizing: border-box; z-index: 10; position: relative; }
-        .header h1 { font-size: 1.8rem; margin: 0; background: linear-gradient(to right, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        /* 検索と現在地 */
+        .search-row { display: flex; gap: 8px; margin: 20px 0; }
+        input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: var(--card); color: white; }
+        .btn-gps { background: #475569; padding: 10px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; }
         
-        .search-box { position: relative; margin: 20px 0 30px 0; }
-        input { width: 100%; padding: 15px; border-radius: 12px; border: 1px solid #334155; background: var(--card); color: white; box-sizing: border-box; font-size: 1rem; outline: none; }
-        button { position: absolute; right: 8px; top: 8px; padding: 8px 20px; border-radius: 8px; border: none; background: var(--accent); color: #0f172a; font-weight: bold; cursor: pointer; }
-
-        .gauge-container { background: var(--card); border-radius: 24px; padding: 30px 20px; text-align: center; margin-bottom: 25px; position: relative; border: 1px solid rgba(255,255,255,0.1); }
-        .chart-box { height: 200px; width: 100%; }
-        .score-label { position: absolute; bottom: 45px; left: 50%; transform: translateX(-50%); width: 100%;}
-        .score-number { font-size: 4rem; font-weight: 800; line-height: 1; }
-        .location-tag { font-size: 0.8rem; color: var(--accent); margin-top: 10px; display: block; font-weight: bold; padding: 0 20px; }
-
-        .result-card { background: var(--card); border-radius: 24px; padding: 25px; border: 1px solid rgba(255,255,255,0.1); display: none; }
-        .badge { padding: 5px 15px; border-radius: 50px; font-size: 0.75rem; font-weight: bold; margin-bottom: 15px; display: inline-block; }
-        .badge.danger { background: var(--danger); color: white; }
-        .badge.warning { background: var(--warning); color: #0f172a; }
-        .badge.safe { background: var(--success); color: white; }
+        /* メインゲージ */
+        .main-card { background: var(--card); border-radius: 24px; padding: 20px; border: 1px solid rgba(255,255,255,0.1); text-align: center; position: relative; margin-bottom: 15px; }
+        .chart-container { height: 180px; position: relative; }
+        .score-display { position: absolute; top: 60%; left: 50%; transform: translate(-50%, -50%); }
+        .score-num { font-size: 3.5rem; font-weight: 900; }
         
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; }
-        .info-item { text-align: center; }
-        .info-label { font-size: 0.65rem; color: #94a3b8; display: block; }
-        .info-value { font-size: 0.9rem; font-weight: bold; }
+        /* タイムライン（3段階） */
+        .timeline { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .time-box { background: var(--card); padding: 10px; border-radius: 12px; text-align: center; font-size: 0.8rem; border: 1px solid rgba(255,255,255,0.05); }
+        
+        /* 【重要】装備アドバイス */
+        .advice-card { background: linear-gradient(145deg, #1e293b, #0f172a); border-radius: 20px; padding: 20px; border-left: 5px solid var(--accent); margin-bottom: 15px; display: none; }
+        .advice-title { font-weight: bold; color: var(--accent); margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
+        .gear-item { background: rgba(56, 189, 248, 0.1); padding: 8px 12px; border-radius: 6px; margin: 5px 0; font-size: 0.85rem; border: 1px border: 1px solid rgba(56, 189, 248, 0.2); }
+
+        /* 周辺スポット比較 */
+        .nearby-card { background: var(--card); border-radius: 20px; padding: 15px; font-size: 0.8rem; display: none; }
+        .nearby-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+
+        .loading-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.9); z-index: 100; display: none; align-items: center; justify-content: center; flex-direction: column; }
     </style>
 </head>
-<body id="mainBody">
-<div id="windOverlay" class="weather-overlay"></div>
+<body>
+
+<div id="loader" class="loading-overlay"><div>Analyzing Environment...</div></div>
+
 <div class="container">
     <div class="header">
-        <h1>CampGuard Pro</h1>
-        <p style="color: #94a3b8; font-size: 0.85rem;">Evolution Ver. 3.6 (Anti-Bear Enhanced)</p>
+        <h2 style="margin:0; font-weight:900;">CampGuard <span style="color:var(--accent)">Expert</span></h2>
     </div>
-    <div class="search-box">
-        <input type="text" id="locationInput" placeholder="地名を入力" value="喜多方市">
-        <button onclick="diagnose()">診断</button>
+
+    <div class="search-row">
+        <input type="text" id="locInput" placeholder="キャンプ場名・地名" value="喜多方市">
+        <button class="btn-gps" onclick="useGPS()">📍</button>
+        <button onclick="diagnose()" style="background:var(--accent); color:black; font-weight:bold; border:none; border-radius:8px; padding:0 20px;">診断</button>
     </div>
-    <div class="gauge-container">
-        <div class="chart-box"><canvas id="gaugeChart"></canvas></div>
-        <div class="score-label">
-            <span id="scoreValue" class="score-number">--</span>
-            <span id="targetName" class="location-tag">Ready</span>
+
+    <div class="main-card">
+        <div class="chart-container"><canvas id="gaugeChart"></canvas></div>
+        <div class="score-display">
+            <div id="scoreVal" class="score-num">--</div>
+            <div id="locName" style="font-size:0.8rem; color:var(--accent)">Ready</div>
         </div>
     </div>
-    <div id="resultArea" class="result-card">
-        <div id="statusBadge" class="badge">--</div>
-        <div id="message" style="font-size: 1.1rem; font-weight: 500; line-height: 1.4;"></div>
-        <div class="info-grid">
-            <div class="info-item"><span class="info-label">WIND</span><span id="windVal" class="info-value">--</span></div>
-            <div class="info-item"><span class="info-label">RAIN</span><span id="rainVal" class="info-value">--</span></div>
-            <div class="info-item"><span class="info-label">LATEST ALERTS</span><span id="alertVal" class="info-value">--</span></div>
-        </div>
+
+    <div class="timeline">
+        <div class="time-box"><div>今</div><div id="tNow" style="font-weight:bold">--</div></div>
+        <div class="time-box"><div>今夜</div><div id="tNight" style="font-weight:bold">--</div></div>
+        <div class="time-box"><div>明日</div><div id="tNext" style="font-weight:bold">--</div></div>
+    </div>
+
+    <div id="adviceArea" class="advice-card">
+        <div class="advice-title">🎒 推奨装備 & 対策</div>
+        <div id="gearList"></div>
+    </div>
+
+    <div id="nearbyArea" class="nearby-card">
+        <div style="font-weight:bold; margin-bottom:10px;">📍 周辺の状況</div>
+        <div id="nearbyList"></div>
     </div>
 </div>
 
@@ -93,67 +92,58 @@
         const ctx = document.getElementById('gaugeChart').getContext('2d');
         myChart = new Chart(ctx, {
             type: 'doughnut',
-            data: { datasets: [{ data: [1, 1, 1], backgroundColor: ['rgba(255,255,255,0.1)','rgba(255,255,255,0.1)','rgba(255,255,255,0.1)'], borderWidth: 0, circumference: 180, rotation: 270 }] },
-            options: { responsive: true, maintainAspectRatio: false, cutout: '85%', plugins: { legend: { display: false } } }
+            data: { datasets: [{ data: [1, 1, 1], backgroundColor: ['#1e293b','#1e293b','#1e293b'], borderWidth: 0, circumference: 180, rotation: 270 }] },
+            options: { cutout: '85%', plugins: { legend: { display: false } } }
         });
-        createWindLines();
     }
 
-    function createWindLines() {
-        const overlay = document.getElementById('windOverlay');
-        overlay.innerHTML = ''; 
-        for(let i=0; i<30; i++) {
-            const line = document.createElement('div'); line.className = 'wind-line';
-            line.style.top = Math.random() * 100 + 'vh'; line.style.animationDuration = (Math.random() * 0.5 + 0.2) + 's';
-            overlay.appendChild(line);
-        }
+    async function useGPS() {
+        navigator.geolocation.getCurrentPosition(pos => {
+            document.getElementById('locInput').value = `${pos.coords.latitude},${pos.coords.longitude}`;
+            diagnose();
+        });
     }
 
     async function diagnose() {
-        const loc = document.getElementById('locationInput').value;
-        const targetDisp = document.getElementById('targetName');
-        targetDisp.innerText = "Analyzing Risk Data...";
+        const loc = document.getElementById('locInput').value;
+        document.getElementById('loader').style.display = 'flex';
         
         try {
             const res = await fetch(`${gasUrl}?place=${encodeURIComponent(loc)}`);
             const data = await res.json();
-            document.getElementById('scoreValue').innerText = data.score;
-            targetDisp.innerText = data.locationName;
-            document.getElementById('windVal').innerText = data.windSpeed + " m/s";
-            document.getElementById('rainVal').innerText = data.rain + " mm";
-            document.getElementById('alertVal').innerText = data.snsReports > 0 ? "⚠️ DETECTED" : "NONE FOUND";
             
-            updateUI(data.score, parseFloat(data.windSpeed), data.snsReports);
-            document.getElementById('resultArea').style.display = 'block';
-            document.getElementById('message').innerText = data.advice;
-        } catch (e) { targetDisp.innerText = "Error: Check Connectivity"; }
+            // UI反映
+            document.getElementById('scoreVal').innerText = data.score;
+            document.getElementById('locName').innerText = data.locationName;
+            document.getElementById('tNow').innerText = data.windSpeed + "m";
+            document.getElementById('tNight').innerText = data.forecast.night + "m";
+            document.getElementById('tNext').innerText = data.forecast.tomorrow + "m";
+
+            // アドバイス表示
+            const gearList = document.getElementById('gearList');
+            gearList.innerHTML = data.gearAdvice.map(a => `<div class="gear-item">⚠️ ${a}</div>`).join('');
+            document.getElementById('adviceArea').style.display = 'block';
+
+            // 周辺比較
+            const nearbyList = document.getElementById('nearbyList');
+            nearbyList.innerHTML = data.nearby.map(n => `<div class="nearby-item"><span>${n.name}</span><b>Score: ${n.score}</b></div>`).join('');
+            document.getElementById('nearbyArea').style.display = 'block';
+
+            updateTheme(data.score);
+        } catch (e) { alert("データ取得に失敗しました。"); }
+        document.getElementById('loader').style.display = 'none';
     }
 
-    function updateUI(score, wind, alerts) {
-        const body = document.getElementById('mainBody');
-        const badge = document.getElementById('statusBadge');
-        const lines = document.querySelectorAll('.wind-line');
+    function updateTheme(score) {
+        const body = document.body;
         const colors = myChart.data.datasets[0].backgroundColor;
-        
-        body.classList.remove('safe-bg', 'warning-bg', 'danger-bg');
-        lines.forEach(l => l.style.display = (wind >= 5) ? 'block' : 'none');
-        
-        if (score >= 70 || alerts > 0) {
-            badge.className = "badge danger";
-            badge.innerText = alerts > 0 ? "CRITICAL RISK (WILDLIFE/NEWS)" : "SEVERE WEATHER";
-            body.classList.add('danger-bg');
-            colors.fill('rgba(255,255,255,0.1)'); colors[2] = '#dc2626';
-        } else if (score >= 40) {
-            badge.className = "badge warning"; badge.innerText = "CAUTION REQUIRED";
-            body.classList.add('warning-bg');
-            colors.fill('rgba(255,255,255,0.1)'); colors[1] = '#f59e0b';
-        } else {
-            badge.className = "badge safe"; badge.innerText = "STABLE CONDITION";
-            body.classList.add('safe-bg');
-            colors.fill('rgba(255,255,255,0.1)'); colors[0] = '#10b981';
-        }
+        colors.fill('#1e293b');
+        if (score >= 70) { body.style.background = "#450a0a"; colors[2] = "#ef4444"; }
+        else if (score >= 40) { body.style.background = "#1e293b"; colors[1] = "#f59e0b"; }
+        else { body.style.background = "#064e3b"; colors[0] = "#10b981"; }
         myChart.update();
     }
+
     window.onload = initChart;
 </script>
 </body>
