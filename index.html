@@ -1,97 +1,195 @@
-const OPENWEATHER_API_KEY = "Fbed326c49afb2c448070bc2a8027f2b";
-const SPREADSHEET_ID = "1lFRBOfNA18X_wF3QG-YqdYbCqVZ-ijd_veZmUM3rWzw";
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampGuard Expert v11.2</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root { --bg: #0b0f1a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-bottom: 90px; }
+        .container { max-width: 480px; margin: 0 auto; padding: 15px; }
+        .page { display: none; }
+        .active { display: block; }
+        
+        .main-card { background: var(--card); border-radius: 28px; padding: 25px 20px; text-align: center; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1); }
+        
+        /* メーター重なり解消用スタイル */
+        .gauge-outer { position: relative; width: 100%; max-width: 280px; height: 160px; margin: 0 auto; }
+        .score-display { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; z-index: 10; }
+        .score-num { font-size: 5rem; font-weight: 900; line-height: 0.8; margin-bottom: 10px; }
+        
+        .search-box { display: flex; gap: 8px; margin-bottom: 20px; }
+        input, textarea { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #334155; background: #0f172a; color: white; font-size: 1rem; width: 100%; box-sizing: border-box; }
+        .btn-diag { background: var(--accent); color: #0f172a; border: none; border-radius: 12px; padding: 0 20px; font-weight: bold; cursor: pointer; }
 
-function doGet(e) {
-  try {
-    let mode = (e && e.parameter && e.parameter.mode) ? e.parameter.mode : "diagnose";
-    
-    // --- モード1: 診断実行 ---
-    if (mode === "diagnose") {
-      let place = e.parameter.place || "喜多方市";
-      const geo = getGeo(place);
-      const forecastRes = UrlFetchApp.fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${geo.lat}&lon=${geo.lon}&appid=${OPENWEATHER_API_KEY}&units=metric&lang=ja`);
-      const forecastData = JSON.parse(forecastRes.getContentText());
-      const bigData = searchSheetKnowledge(geo.name);
-      const summary = analyzeForecast(forecastData);
-      let scoreReasons = [];
-      let finalScore = calculateAdvancedScore(summary, bigData, scoreReasons);
+        #resAdv { background: rgba(56, 189, 248, 0.1); padding: 15px; border-radius: 16px; text-align: left; font-size: 0.95rem; margin-top: 20px; border-left: 4px solid var(--accent); white-space: pre-wrap; line-height: 1.5; }
 
-      return ContentService.createTextOutput(JSON.stringify({
-        score: Math.round(finalScore),
-        locationName: geo.name,
-        maxWind: summary.maxWind.toFixed(1),
-        maxTemp: summary.maxTemp.toFixed(1),
-        minTemp: summary.minTemp.toFixed(1),
-        timeline: summary.timeline,
-        recommendation: generateAIAdvice(summary, bigData)
-      })).setMimeType(ContentService.MimeType.JSON);
-    } 
-    
-    // --- モード2: 日記投稿 ---
-    else if (mode === "postDiary") {
-      const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("database");
-      sheet.appendRow([e.parameter.place, e.parameter.topic, e.parameter.content, new Date(), e.parameter.category, ""]);
-      return ContentService.createTextOutput(JSON.stringify({success: true})).setMimeType(ContentService.MimeType.JSON);
+        .timeline { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; scrollbar-width: none; }
+        .t-item { background: #334155; padding: 10px; border-radius: 12px; min-width: 65px; text-align: center; flex: 0 0 auto; }
+
+        .nav { position: fixed; bottom: 0; left: 0; right: 0; background: #1e293b; display: flex; justify-content: space-around; padding: 15px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .nav-item { cursor: pointer; font-size: 0.75rem; opacity: 0.5; text-align: center; }
+        .nav-item.active { opacity: 1; color: var(--accent); font-weight: bold; }
+        
+        .loading { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 2000; font-weight: bold; flex-direction: column; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div id="loader" class="loading"><div style="border: 4px solid #f3f3f3; border-top: 4px solid var(--accent); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 10px;"></div>解析中...</div>
+
+<div class="container">
+    <div id="pageDiag" class="page active">
+        <h2 style="text-align:center;">CampGuard <span style="color:var(--accent)">Expert</span></h2>
+        <div class="search-box">
+            <input type="text" id="loc" placeholder="キャンプ場・場所を入力" value="鵠沼">
+            <button class="btn-diag" onclick="diagnose()">診断</button>
+        </div>
+
+        <div id="resultArea" style="display:none;">
+            <div class="main-card">
+                <div id="resLoc" style="font-size:0.85rem; color:var(--accent); margin-bottom: 15px; opacity:0.8;"></div>
+                <div class="gauge-outer">
+                    <canvas id="gaugeChart"></canvas>
+                    <div class="score-display">
+                        <div id="resScore" class="score-num">--</div>
+                        <div style="font-size:0.7rem; opacity:0.6; letter-spacing: 2px;">RISK SCORE</div>
+                    </div>
+                </div>
+                
+                <div id="resAdv"></div>
+                
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; font-size:0.75rem; border-top:1px solid rgba(255,255,255,0.1); padding-top:20px; margin-top:20px;">
+                    <div>最大風速<br><b id="resWind" style="font-size:1.1rem; color:var(--accent);"></b></div>
+                    <div>最高気温<br><b id="resMaxT" style="font-size:1.1rem;"></b></div>
+                    <div>最低気温<br><b id="resMinT" style="font-size:1.1rem;"></b></div>
+                </div>
+            </div>
+
+            <div id="resTimeline" class="timeline"></div>
+
+            <div class="main-card" style="text-align:left; font-size:0.85rem; padding: 20px;">
+                <div style="font-weight:bold; color:var(--accent); margin-bottom:12px; display:flex; align-items:center;">🛡️ 推奨装備チェックリスト</div>
+                <div id="resGear" style="line-height: 2;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="pageDiary" class="page">
+        <h2 style="text-align:center;">Camp Diary</h2>
+        <div class="main-card">
+            <input type="text" id="dPlace" placeholder="キャンプ場名" style="margin-bottom:12px;">
+            <input type="text" id="dTopic" placeholder="トピック（例：突風に注意）" style="margin-bottom:12px;">
+            <textarea id="dContent" placeholder="内容（例：サイトBは北風が防げる。ペグは30cmが必要。）" style="height:140px; margin-bottom:15px;"></textarea>
+            <button onclick="saveDiary()" style="width:100%; padding:15px; border-radius:14px; background:var(--accent); border:none; font-weight:bold; cursor:pointer; color:#0f172a;">日記を保存して知見を共有</button>
+        </div>
+    </div>
+
+    <div id="pageHistory" class="page">
+        <h2 style="text-align:center;">Experience List</h2>
+        <div id="historyList"></div>
+    </div>
+</div>
+
+<div class="nav">
+    <div class="nav-item active" onclick="switchPage('pageDiag', this)">🏠<br>診断</div>
+    <div class="nav-item" onclick="switchPage('pageDiary', this)">✍️<br>日記</div>
+    <div class="nav-item" onclick="loadHistory(this)">📚<br>履歴</div>
+</div>
+
+<script>
+    const gasUrl = "https://script.google.com/macros/s/AKfycbyqDTFt6HyyWfDLJJTkB2hQfSik9oJJfmIJBsRZ4U_kacbxYjlE2lB759s7scGMhaHx/exec";
+    let myChart;
+
+    function switchPage(id, el) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        el.classList.add('active');
     }
 
-    // --- モード3: 履歴取得 ---
-    else if (mode === "getDiaries") {
-      const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("database");
-      const data = sheet.getDataRange().getValues();
-      let diaries = [];
-      for(let i=data.length-1; i>=1; i--) { 
-        diaries.push({ place: data[i][0], topic: data[i][1], content: data[i][2], date: data[i][3] });
-      }
-      return ContentService.createTextOutput(JSON.stringify(diaries)).setMimeType(ContentService.MimeType.JSON);
+    async function diagnose() {
+        const loader = document.getElementById('loader');
+        loader.style.display = 'flex';
+        const place = document.getElementById('loc').value;
+        
+        try {
+            const res = await fetch(`${gasUrl}?mode=diagnose&place=${encodeURIComponent(place)}`);
+            const data = await res.json();
+
+            document.getElementById('resultArea').style.display = 'block';
+            document.getElementById('resLoc').innerText = data.locationName;
+            document.getElementById('resScore').innerText = data.score;
+            document.getElementById('resAdv').innerText = data.recommendation;
+            document.getElementById('resWind').innerText = data.maxWind + "m/s";
+            document.getElementById('resMaxT').innerText = data.maxTemp + "℃";
+            document.getElementById('resMinT').innerText = data.minTemp + "℃";
+
+            updateGauge(data.score);
+
+            let gearHtml = "";
+            if(data.maxWind > 10) gearHtml += "❌ 【危険】設営を見合わせるレベル<br>";
+            else if(data.maxWind > 5) gearHtml += "✅ 30cm以上の鍛造ペグ（フルペグダウン）<br>";
+            if(data.minTemp < 10) gearHtml += "✅ 冬用シュラフ・ストーブ・湯たんぽ<br>";
+            if(data.maxTemp > 28) gearHtml += "✅ 遮光性の高いタープ・扇風機<br>";
+            document.getElementById('resGear').innerHTML = gearHtml || "✅ 標準装備で快適に過ごせます";
+
+            document.getElementById('resTimeline').innerHTML = data.timeline.map(t => `
+                <div class="t-item">
+                    <div style="font-size:0.65rem; color:var(--accent); font-weight:bold; margin-bottom:4px;">${t.time}</div>
+                    <img src="https://openweathermap.org/img/wn/${t.icon}.png" width="30">
+                    <div style="font-weight:bold; font-size:0.9rem;">${t.temp}℃</div>
+                    <div style="font-size:0.6rem; opacity:0.6; margin-top:2px;">${t.wind}m/s</div>
+                </div>
+            `).join('');
+
+        } catch(e) { alert("データ取得に失敗しました。GASのデプロイ設定を確認してください。"); }
+        loader.style.display = 'none';
     }
-  } catch(e) { return ContentService.createTextOutput(JSON.stringify({error: e.toString()})).setMimeType(ContentService.MimeType.JSON); }
-}
 
-function searchSheetKnowledge(location) {
-  try {
-    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("database");
-    const data = sheet.getDataRange().getValues();
-    let results = [];
-    const searchKey = location.toLowerCase().replace(/\s+/g, "");
-    for (let i = 1; i < data.length; i++) {
-      let targetPlace = String(data[i][0]).toLowerCase().replace(/\s+/g, "");
-      if (targetPlace.includes(searchKey) || searchKey.includes(targetPlace)) {
-        results.push({ topic: data[i][1], content: data[i][2] });
-      }
+    function updateGauge(score) {
+        const ctx = document.getElementById('gaugeChart').getContext('2d');
+        const color = score >= 80 ? '#ef4444' : (score >= 50 ? '#f59e0b' : '#10b981');
+        
+        if (myChart) myChart.destroy();
+        myChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: { datasets: [{ data: [score, 100 - score], backgroundColor: [color, 'rgba(255,255,255,0.1)'], borderWidth: 0, circumference: 180, rotation: 270, cutout: '90%' }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, animation: { duration: 1500, easing: 'easeOutQuart' } }
+        });
     }
-    return results;
-  } catch(e) { return []; }
-}
 
-function calculateAdvancedScore(summary, bigData, reasons) {
-  let s = 0;
-  if (summary.maxWind > 5) s += Math.pow(summary.maxWind, 1.8);
-  if (summary.minTemp < 10) s += (10 - summary.minTemp) * 5;
-  if (bigData.length > 0) s += 10; 
-  return Math.min(s, 100);
-}
+    async function saveDiary() {
+        const place = document.getElementById('dPlace').value;
+        const topic = document.getElementById('dTopic').value;
+        const content = document.getElementById('dContent').value;
+        if(!place || !topic) return alert("場所とトピックを入力してください");
+        
+        document.getElementById('loader').style.display = 'flex';
+        await fetch(`${gasUrl}?mode=postDiary&place=${encodeURIComponent(place)}&topic=${encodeURIComponent(topic)}&content=${encodeURIComponent(content)}`);
+        document.getElementById('loader').style.display = 'none';
+        
+        alert("知見を保存しました。次回の診断に反映されます！");
+        document.getElementById('dTopic').value = "";
+        document.getElementById('dContent').value = "";
+    }
 
-function generateAIAdvice(summary, bigData) {
-  let advice = "";
-  if (summary.maxWind > 8) advice = "【⚠️強風注意】風を遮る設営を。";
-  else if (summary.minTemp < 5) advice = "【❄️防寒警戒】ストーブの準備を。";
-  else advice = "比較的穏やかな予報です。";
-  
-  if (bigData.length > 0) advice += "\n💡過去の知見に基づきリスク算出済み。";
-  return advice;
-}
-
-function analyzeForecast(data) {
-  let maxW = 0, maxT = -100, minT = 100, tl = [];
-  data.list.slice(0, 8).forEach(item => {
-    let t = item.main.temp, w = item.wind.speed;
-    tl.push({ time: new Date(item.dt * 1000).getHours() + "時", temp: Math.round(t), wind: w.toFixed(1), icon: item.weather[0].icon });
-    if (w > maxW) maxW = w; if (t > maxT) maxT = t; if (t < minT) minT = t;
-  });
-  return { maxWind: maxW, maxTemp: maxT, minTemp: minT, timeline: tl };
-}
-
-function getGeo(p) {
-  const res = Maps.newGeocoder().geocode(p);
-  return (res.status === "OK") ? { lat: res.results[0].geometry.location.lat, lon: res.results[0].geometry.location.lng, name: res.results[0].formatted_address.replace("日本、", "") } : { lat: 35.68, lon: 139.76, name: "東京" };
-}
+    async function loadHistory(el) {
+        switchPage('pageHistory', el);
+        document.getElementById('loader').style.display = 'flex';
+        const res = await fetch(`${gasUrl}?mode=getDiaries`);
+        const data = await res.json();
+        document.getElementById('historyList').innerHTML = data.map(d => `
+            <div class="main-card" style="text-align:left; font-size:0.9rem; padding: 18px;">
+                <div style="color:var(--accent); font-size:0.75rem; font-weight:bold;">${new Date(d.date).toLocaleDateString()} @${d.place}</div>
+                <div style="font-weight:bold; margin:8px 0; font-size:1.05rem;">${d.topic}</div>
+                <div style="opacity:0.85; line-height:1.6; border-top: 1px solid rgba(255,255,255,0.05); padding-top:8px;">${d.content}</div>
+            </div>
+        `).join('');
+        document.getElementById('loader').style.display = 'none';
+    }
+</script>
+</body>
+</html>
