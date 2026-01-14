@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CampGuard Expert - Ultimate</title>
+    <title>CampGuard Expert - 日本語版</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         :root {
@@ -11,10 +11,7 @@
             --accent: #38bdf8; --danger: #ef4444; --warning: #f59e0b; --success: #10b981;
             --text: #f1f5f9;
         }
-        body {
-            font-family: 'Inter', sans-serif; margin: 0; background-color: var(--bg); color: var(--text);
-            transition: background 1s ease; min-height: 100vh;
-        }
+        body { font-family: 'Inter', 'Hiragino Kaku Gothic ProN', sans-serif; margin: 0; background-color: var(--bg); color: var(--text); transition: background 1s ease; min-height: 100vh; }
         .container { width: 100%; max-width: 480px; margin: 0 auto; padding: 20px; box-sizing: border-box; }
         
         .search-row { display: flex; gap: 8px; margin: 15px 0; }
@@ -22,48 +19,45 @@
         .btn-gps { background: #475569; padding: 10px; border-radius: 12px; border: none; cursor: pointer; font-size: 1.2rem; }
         .btn-diag { background: var(--accent); color: #0f172a; font-weight: 800; border: none; border-radius: 12px; padding: 0 20px; cursor: pointer; }
         
-        /* メインカード */
-        .main-card { background: var(--card); border-radius: 28px; padding: 25px 20px; border: 1px solid rgba(255,255,255,0.1); text-align: center; margin-bottom: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-        .chart-box { height: 180px; width: 100%; position: relative; margin: 0 auto; }
+        .main-card { background: var(--card); border-radius: 28px; padding: 25px 20px; border: 1px solid rgba(255,255,255,0.1); text-align: center; margin-bottom: 15px; }
+        .chart-box { height: 160px; width: 100%; position: relative; margin: 0 auto; }
         .score-display { position: absolute; top: 65%; left: 50%; transform: translate(-50%, -50%); width: 100%; }
-        .score-num { font-size: 4rem; font-weight: 900; line-height: 1; }
+        .score-num { font-size: 3.5rem; font-weight: 900; line-height: 1; }
         .loc-tag { font-size: 0.85rem; color: var(--accent); margin-top: 8px; font-weight: bold; }
 
-        /* 風・雨・アラートの横並び */
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); }
-        .stat-item { display: flex; flex-direction: column; gap: 4px; }
-        .stat-label { font-size: 0.65rem; color: #94a3b8; font-weight: bold; }
-        .stat-val { font-size: 1rem; font-weight: bold; }
+        .stat-label { font-size: 0.65rem; color: #94a3b8; font-weight: bold; display: block; }
+        .stat-val { font-size: 0.9rem; font-weight: bold; }
 
-        /* タイムライン */
+        /* 3日間天気セクション */
         .timeline { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         .time-box { background: var(--card); padding: 12px; border-radius: 16px; text-align: center; border: 1px solid rgba(255,255,255,0.05); }
-        .time-label { font-size: 0.7rem; color: #94a3b8; margin-bottom: 4px; }
+        .time-label { font-size: 0.75rem; color: #94a3b8; margin-bottom: 6px; font-weight: bold; }
+        .weather-icon { font-size: 1.2rem; margin: 5px 0; display: block; }
+        .time-wind { font-size: 0.8rem; font-weight: bold; color: var(--accent); }
 
-        /* 装備アドバイス */
-        .advice-card { background: linear-gradient(145deg, #1e293b, #0f172a); border-radius: 20px; padding: 20px; border-left: 6px solid var(--accent); margin-bottom: 15px; display: none; text-align: left; }
-        .advice-header { font-weight: bold; color: var(--accent); margin-bottom: 12px; font-size: 1rem; }
-        .gear-list { display: flex; flex-direction: column; gap: 8px; }
-        .gear-item { background: rgba(56, 189, 248, 0.08); padding: 10px 14px; border-radius: 10px; font-size: 0.85rem; line-height: 1.4; border: 1px solid rgba(56, 189, 248, 0.15); }
-
-        .nearby-card { background: var(--card); border-radius: 20px; padding: 18px; font-size: 0.85rem; display: none; }
-        .nearby-title { font-weight: bold; margin-bottom: 12px; color: #94a3b8; }
-        .nearby-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .checklist-card { background: var(--card); border-radius: 20px; padding: 20px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1); }
+        .section-title { font-weight: bold; color: var(--accent); margin-bottom: 15px; font-size: 0.95rem; }
+        
+        .check-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem; }
+        .check-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+        .gear-input-row { display: flex; gap: 5px; margin-bottom: 15px; }
+        .btn-add { background: var(--accent); color: black; border: none; border-radius: 8px; padding: 0 15px; font-weight: bold; cursor: pointer; }
 
         .loading { position: fixed; inset: 0; background: rgba(15,23,42,0.9); z-index: 100; display: none; align-items: center; justify-content: center; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div id="loader" class="loading">環境分析中...</div>
+<div id="loader" class="loading">環境と装備を分析中...</div>
 
 <div class="container">
     <div class="header">
-        <h2 style="margin:0; font-weight:900; letter-spacing: -1px;">CampGuard <span style="color:var(--accent)">Expert</span></h2>
+        <h2 style="margin:0; font-weight:900;">CampGuard <span style="color:var(--accent)">Expert</span></h2>
     </div>
 
     <div class="search-row">
-        <input type="text" id="locInput" placeholder="場所・キャンプ場名" value="喜多方市">
+        <input type="text" id="locInput" placeholder="場所を入力（例：ふもとっぱら）" value="喜多方市">
         <button class="btn-gps" onclick="useGPS()">📍</button>
         <button class="btn-diag" onclick="diagnose()">診断</button>
     </div>
@@ -73,31 +67,46 @@
             <canvas id="gaugeChart"></canvas>
             <div class="score-display">
                 <div id="scoreVal" class="score-num">--</div>
-                <div id="locName" class="loc-tag">Ready</div>
+                <div id="locName" class="loc-tag">準備完了</div>
             </div>
         </div>
-
         <div class="stats-grid">
-            <div class="stat-item"><span class="stat-label">WIND</span><span id="statWind" class="stat-val">--</span></div>
-            <div class="stat-item"><span class="stat-label">RAIN</span><span id="statRain" class="stat-val">--</span></div>
-            <div class="stat-item"><span class="stat-label">ALERTS</span><span id="statAlert" class="stat-val">--</span></div>
+            <div class="stat-item"><span class="stat-label">風速</span><span id="statWind" class="stat-val">--</span></div>
+            <div class="stat-item"><span class="stat-label">降水量</span><span id="statRain" class="stat-val">--</span></div>
+            <div class="stat-item"><span class="stat-label">警告</span><span id="statAlert" class="stat-val">--</span></div>
         </div>
     </div>
 
     <div class="timeline">
-        <div class="time-box"><div class="time-label">Now</div><div id="tNow" style="font-weight:bold">--</div></div>
-        <div class="time-box"><div class="time-label">Tonight</div><div id="tNight" style="font-weight:bold">--</div></div>
-        <div class="time-box"><div class="time-label">Tomorrow</div><div id="tNext" style="font-weight:bold">--</div></div>
+        <div class="time-box">
+            <div class="time-label">今日</div>
+            <span id="iconNow" class="weather-icon">--</span>
+            <div id="windNow" class="time-wind">--</div>
+        </div>
+        <div class="time-box">
+            <div class="time-label">今夜</div>
+            <span id="iconNight" class="weather-icon">--</span>
+            <div id="windNight" class="time-wind">--</div>
+        </div>
+        <div class="time-box">
+            <div class="time-label">明日</div>
+            <span id="iconNext" class="weather-icon">--</span>
+            <div id="windNext" class="time-wind">--</div>
+        </div>
     </div>
 
-    <div id="adviceArea" class="advice-card">
-        <div class="advice-header">🎒 推奨装備 & 現場対策</div>
-        <div id="gearList" class="gear-list"></div>
+    <div class="checklist-card">
+        <div class="section-title">🎒 マイ・ギアリスト</div>
+        <div class="gear-input-row">
+            <input type="text" id="newGearInput" placeholder="お気に入りの道具を追加">
+            <button class="btn-add" onclick="addMyGear()">追加</button>
+        </div>
+        <div id="myGearList"></div>
     </div>
 
-    <div id="nearbyArea" class="nearby-card">
-        <div class="nearby-title">📍 周辺エリアの安全スコア</div>
-        <div id="nearbyList"></div>
+    <div id="aiAdviceArea" class="checklist-card" style="display:none; border-left: 5px solid var(--warning);">
+        <div class="section-title" style="color: var(--warning);">⚠️ AI推奨の追加装備</div>
+        <div id="aiGearList"></div>
     </div>
 </div>
 
@@ -105,82 +114,97 @@
     let myChart;
     const gasUrl = "https://script.google.com/macros/s/AKfycbyqDTFt6HyyWfDLJJTkB2hQfSik9oJJfmIJBsRZ4U_kacbxYjlE2lB759s7scGMhaHx/exec";
 
+    window.onload = () => { initChart(); renderMyGear(); };
+
     function initChart() {
         const ctx = document.getElementById('gaugeChart').getContext('2d');
         myChart = new Chart(ctx, {
             type: 'doughnut',
-            data: {
-                datasets: [{
-                    data: [0, 100],
-                    backgroundColor: ['#1e293b', '#1e293b'],
-                    borderWidth: 0, circumference: 180, rotation: 270, cutout: '82%'
-                }]
-            },
+            data: { datasets: [{ data: [0, 100], backgroundColor: ['#1e293b', '#1e293b'], borderWidth: 0, circumference: 180, rotation: 270, cutout: '82%' }] },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
         });
     }
 
+    // 天気アイコン変換
+    function getWeatherIcon(desc) {
+        if (desc.includes("晴")) return "☀️";
+        if (desc.includes("曇")) return "☁️";
+        if (desc.includes("雨")) return "☔";
+        if (desc.includes("雪")) return "❄️";
+        return "⛅";
+    }
+
+    async function diagnose() {
+        const loc = document.getElementById('locInput').value;
+        document.getElementById('loader').style.display = 'flex';
+        try {
+            const res = await fetch(`${gasUrl}?place=${encodeURIComponent(loc)}`);
+            const data = await res.json();
+            
+            document.getElementById('scoreVal').innerText = data.score;
+            document.getElementById('locName').innerText = data.locationName;
+            document.getElementById('statWind').innerText = data.windSpeed + " m/s";
+            document.getElementById('statRain').innerText = (data.rain || 0) + " mm";
+            document.getElementById('statAlert').innerText = data.snsReports > 0 ? "⚠️" + data.snsReports : "なし";
+
+            // タイムライン反映
+            document.getElementById('iconNow').innerText = getWeatherIcon(data.forecast.nowDesc);
+            document.getElementById('windNow').innerText = data.windSpeed + "m";
+            document.getElementById('iconNight').innerText = getWeatherIcon(data.forecast.nightDesc);
+            document.getElementById('windNight').innerText = data.forecast.night + "m";
+            document.getElementById('iconNext').innerText = getWeatherIcon(data.forecast.tomorrowDesc);
+            document.getElementById('windNext').innerText = data.forecast.tomorrow + "m";
+
+            // AIアドバイス
+            document.getElementById('aiGearList').innerHTML = data.gearAdvice.map(a => `
+                <div class="check-item" style="color:var(--warning)">
+                    <input type="checkbox"><span>${a}</span>
+                </div>
+            `).join('');
+            document.getElementById('aiAdviceArea').style.display = 'block';
+
+            updateTheme(data.score);
+        } catch (e) { alert("診断に失敗しました。"); }
+        document.getElementById('loader').style.display = 'none';
+    }
+
+    // 以下、マイギア管理ロジック（前と同じ）
+    function addMyGear() {
+        const input = document.getElementById('newGearInput');
+        if (!input.value) return;
+        let gears = JSON.parse(localStorage.getItem('myGears') || '[]');
+        gears.push({ name: input.value, checked: false });
+        localStorage.setItem('myGears', JSON.stringify(gears));
+        input.value = ''; renderMyGear();
+    }
+    function renderMyGear() {
+        const list = document.getElementById('myGearList');
+        let gears = JSON.parse(localStorage.getItem('myGears') || '[]');
+        list.innerHTML = gears.map((g, i) => `
+            <div class="check-item">
+                <input type="checkbox" ${g.checked ? 'checked' : ''} onchange="toggleMyGear(${i})">
+                <span>${g.name}</span>
+            </div>
+        `).join('');
+    }
+    function toggleMyGear(index) {
+        let gears = JSON.parse(localStorage.getItem('myGears') || '[]');
+        gears[index].checked = !gears[index].checked;
+        localStorage.setItem('myGears', JSON.stringify(gears));
+    }
+    function updateTheme(score) {
+        myChart.data.datasets[0].data = [score, 100 - score];
+        const color = score >= 70 ? "#ef4444" : (score >= 40 ? "#f59e0b" : "#10b981");
+        myChart.data.datasets[0].backgroundColor[0] = color;
+        document.body.style.background = score >= 70 ? "#450a0a" : (score >= 40 ? "#0f172a" : "#064e3b");
+        myChart.update();
+    }
     async function useGPS() {
         navigator.geolocation.getCurrentPosition(pos => {
             document.getElementById('locInput').value = `${pos.coords.latitude},${pos.coords.longitude}`;
             diagnose();
         });
     }
-
-    async function diagnose() {
-        const loc = document.getElementById('locInput').value;
-        document.getElementById('loader').style.display = 'flex';
-        
-        try {
-            const res = await fetch(`${gasUrl}?place=${encodeURIComponent(loc)}`);
-            const data = await res.json();
-            
-            // 値のセット
-            document.getElementById('scoreVal').innerText = data.score;
-            document.getElementById('locName').innerText = data.locationName;
-            document.getElementById('statWind').innerText = data.windSpeed + " m/s";
-            document.getElementById('statRain').innerText = data.rain + " mm";
-            document.getElementById('statAlert').innerText = data.snsReports > 0 ? "⚠️" + data.snsReports : "0";
-            
-            document.getElementById('tNow').innerText = data.windSpeed + "m";
-            document.getElementById('tNight').innerText = data.forecast.night + "m";
-            document.getElementById('tNext').innerText = data.forecast.tomorrow + "m";
-
-            // アドバイス
-            const gearArea = document.getElementById('gearList');
-            gearArea.innerHTML = data.gearAdvice.map(a => `<div class="gear-item">${a}</div>`).join('');
-            document.getElementById('adviceArea').style.display = 'block';
-
-            // 周辺
-            const nearbyArea = document.getElementById('nearbyList');
-            nearbyArea.innerHTML = data.nearby.map(n => `<div class="nearby-row"><span>${n.name}</span><b>${n.score}</b></div>`).join('');
-            document.getElementById('nearbyArea').style.display = 'block';
-
-            updateTheme(data.score);
-        } catch (e) { alert("取得エラー"); }
-        document.getElementById('loader').style.display = 'none';
-    }
-
-    function updateTheme(score) {
-        const body = document.body;
-        const colors = myChart.data.datasets[0].backgroundColor;
-        
-        myChart.data.datasets[0].data = [score, 100 - score];
-        
-        if (score >= 70) {
-            body.style.background = "#450a0a";
-            colors[0] = "#ef4444";
-        } else if (score >= 40) {
-            body.style.background = "#1e293b";
-            colors[0] = "#f59e0b";
-        } else {
-            body.style.background = "#064e3b";
-            colors[0] = "#10b981";
-        }
-        myChart.update();
-    }
-
-    window.onload = initChart;
 </script>
 </body>
 </html>
