@@ -3,105 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CampGuard Expert v9.1</title>
+    <title>CampGuard Expert Ver 9.2</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
-        :root { --bg: #0b0f1a; --accent: #00d4ff; --card: rgba(23, 32, 53, 0.95); --text: #e0e6ed; --danger: #ff4d4d; --warning: #ffaa00; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; line-height: 1.4; }
+        :root { --bg: #0b0f1a; --card: rgba(30, 41, 59, 0.9); --accent: #38bdf8; --danger: #ef4444; --warning: #f59e0b; --text: #f1f5f9; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
         .container { max-width: 480px; margin: 0 auto; }
-        .main-card { background: var(--card); border-radius: 28px; padding: 25px; border: 1px solid rgba(255,255,255,0.1); text-align: center; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .score { font-size: 5rem; font-weight: 900; line-height: 1; margin: 15px 0; transition: color 0.5s; }
-        .ai-recommend { background: rgba(0, 212, 255, 0.1); border-left: 4px solid var(--accent); padding: 15px; border-radius: 12px; text-align: left; font-size: 0.9rem; margin-top: 15px; }
-        .insight-card { background: var(--card); border-radius: 20px; padding: 20px; border: 1px solid rgba(255,255,255,0.1); }
-        .insight-item { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 12px 0; font-size: 0.85rem; text-align: left; }
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: bold; margin-bottom: 5px; background: var(--accent); color: var(--bg); }
-        .badge-danger { background: var(--danger); color: white; }
-        .search-row { display: flex; gap: 8px; margin-bottom: 20px; }
-        input { flex: 1; padding: 15px; border-radius: 12px; border: 1px solid #334155; background: #1a2236; color: white; outline: none; font-size: 1rem; }
-        button { background: var(--accent); color: var(--bg); border: none; padding: 0 20px; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.3s; }
-        button:active { transform: scale(0.95); opacity: 0.8; }
-        .loading { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
-        .spinner { border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* 検索バー */
+        .search-row { display: flex; gap: 8px; margin-bottom: 15px; }
+        input { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #334155; background: var(--card); color: white; outline: none; }
+        button { background: var(--accent); color: #0b0f1a; font-weight: 800; border: none; border-radius: 12px; padding: 0 20px; cursor: pointer; }
+
+        /* メインスコアカード */
+        .main-card { background: var(--card); border-radius: 28px; padding: 25px 20px; border: 1px solid rgba(255,255,255,0.1); text-align: center; margin-bottom: 15px; position: relative; }
+        .chart-box { height: 160px; position: relative; }
+        .score-display { position: absolute; top: 60%; left: 50%; transform: translate(-50%, -50%); }
+        .score-num { font-size: 3.5rem; font-weight: 900; line-height: 1; }
+        
+        /* AI行動指示 */
+        .ai-guide { background: rgba(255,255,255,0.05); border-radius: 16px; padding: 15px; text-align: left; margin: 15px 0; border-left: 5px solid var(--accent); }
+        
+        /* 詳細数値 */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .stat-label { font-size: 0.65rem; color: #94a3b8; display: block; }
+        .stat-val { font-size: 0.85rem; font-weight: bold; }
+
+        /* リスク内訳 */
+        .reason-box { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 12px; margin-top: 15px; text-align: left; font-size: 0.8rem; }
+
+        /* タイムライン */
+        .timeline-scroll { display: flex; gap: 10px; overflow-x: auto; margin: 15px 0; padding-bottom: 5px; scrollbar-width: none; }
+        .time-item { flex: 0 0 70px; background: var(--card); padding: 10px; border-radius: 16px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
+        
+        /* スプレッドシート知見 */
+        .insight-card { background: var(--card); border-radius: 20px; padding: 20px; margin-top: 15px; border: 1px solid var(--accent); }
+        .insight-item { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 10px 0; font-size: 0.8rem; }
+        .badge { font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; background: var(--accent); color: #0b0f1a; font-weight: bold; }
+
+        .loading { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 100; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div id="loader" class="loading">
-    <div class="spinner"></div>
-    <div>🧠 ビッグデータ照合中...</div>
-</div>
+<div id="loader" class="loading">解析中...</div>
 
 <div class="container">
-    <h2 style="text-align:center; letter-spacing: 2px; margin: 10px 0;">CAMPGUARD <span style="color:var(--accent)">EXPERT</span></h2>
+    <h2 style="text-align:center; font-weight:900;">CampGuard <span style="color:var(--accent)">Expert</span></h2>
 
     <div class="search-row">
-        <input type="text" id="locInput" placeholder="キャンプ場名または地名" value="喜多方市">
+        <input type="text" id="locInput" value="喜多方市">
         <button onclick="diagnose()">診断</button>
     </div>
 
     <div class="main-card">
-        <div style="font-size: 0.75rem; font-weight: bold; color: var(--accent); text-transform: uppercase;">Current Risk Level</div>
-        <div id="scoreVal" class="score">--</div>
-        
-        <div id="recArea" class="ai-recommend" style="display:none;">
-            <div style="font-size: 0.7rem; color: var(--accent); font-weight: bold; margin-bottom: 5px;">AI ADVICE</div>
-            <div id="recText" style="white-space: pre-wrap;"></div>
+        <div class="chart-box">
+            <canvas id="gaugeChart"></canvas>
+            <div class="score-display">
+                <div id="scoreVal" class="score-num">--</div>
+                <div id="locName" style="font-size:0.7rem; color:var(--accent); margin-top:5px;">READY</div>
+            </div>
+        </div>
+
+        <div class="ai-guide">
+            <div style="font-size:0.65rem; color:#94a3b8; margin-bottom:5px;">AI 行動指示</div>
+            <div id="recText" style="font-weight:bold; white-space:pre-wrap;">場所を入力して診断ボタンを押してください</div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-item"><span class="stat-label">最大風速</span><span id="statWind">--</span></div>
+            <div class="stat-item"><span class="stat-label">最大降水量</span><span id="statRain">--</span></div>
+            <div class="stat-item"><span class="stat-label">気温(最高/最低)</span><span id="statTemp">--</span></div>
+        </div>
+
+        <div class="reason-box">
+            <div style="font-weight:bold; color:var(--accent); margin-bottom:5px;">🔍 リスク分析の内訳</div>
+            <div id="reasonList" style="line-height:1.6;"></div>
         </div>
     </div>
 
+    <div id="timeline" class="timeline-scroll"></div>
+
     <div id="insightCard" class="insight-card" style="display:none;">
-        <div style="font-weight: bold; color: var(--accent); margin-bottom: 15px; border-bottom: 1px solid rgba(0,212,255,0.3); padding-bottom: 5px;">📚 過去の重要知見</div>
+        <div style="font-weight:bold; color:var(--accent); margin-bottom:10px;">📚 過去の重要知見 (Big Data)</div>
         <div id="insightList"></div>
     </div>
 </div>
 
 <script>
-    // 指定されたウェブアプリURL
     const gasUrl = "https://script.google.com/macros/s/AKfycbyqDTFt6HyyWfDLJJTkB2hQfSik9oJJfmIJBsRZ4U_kacbxYjlE2lB759s7scGMhaHx/exec";
+    let myChart;
+
+    window.onload = initChart;
+
+    function initChart() {
+        const ctx = document.getElementById('gaugeChart').getContext('2d');
+        myChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: { datasets: [{ data: [0, 100], backgroundColor: ['#1e293b', '#1e293b'], borderWidth: 0, circumference: 180, rotation: 270, cutout: '85%' }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+    }
 
     async function diagnose() {
-        const loader = document.getElementById('loader');
+        document.getElementById('loader').style.display = 'flex';
         const loc = document.getElementById('locInput').value;
-        if(!loc) return alert("場所を入力してください");
-
-        loader.style.display = 'flex';
-        
         try {
             const res = await fetch(`${gasUrl}?place=${encodeURIComponent(loc)}`);
             const data = await res.json();
-            
-            if(data.error) throw new Error(data.error);
 
-            // スコア表示と色の変更
-            const scoreEl = document.getElementById('scoreVal');
-            scoreEl.innerText = data.score;
-            scoreEl.style.color = data.score >= 70 ? 'var(--danger)' : (data.score >= 40 ? 'var(--warning)' : 'var(--accent)');
-            
-            // AIアドバイスの反映
+            // スコア & グラフ更新
+            document.getElementById('scoreVal').innerText = data.score;
+            document.getElementById('locName').innerText = data.locationName;
+            const color = data.score >= 70 ? '#ef4444' : (data.score >= 40 ? '#f59e0b' : '#10b981');
+            myChart.data.datasets[0].data = [data.score, 100 - data.score];
+            myChart.data.datasets[0].backgroundColor[0] = color;
+            myChart.update();
+
+            // 数値 & アドバイス
+            document.getElementById('statWind').innerText = data.maxWind + "m/s";
+            document.getElementById('statRain').innerText = data.maxRain + "mm/h";
+            document.getElementById('statTemp').innerText = data.maxTemp + "/" + data.minTemp + "℃";
             document.getElementById('recText').innerText = data.recommendation;
-            document.getElementById('recArea').style.display = 'block';
+            document.getElementById('reasonList').innerHTML = data.reasons.map(r => "・" + r).join("<br>");
 
-            // スプレッドシートからの知見反映
-            const insightList = document.getElementById('insightList');
+            // タイムライン
+            document.getElementById('timeline').innerHTML = data.timeline.map(t => `
+                <div class="time-item">
+                    <div style="font-size:0.7rem; color:var(--accent);">${t.time}</div>
+                    <img src="https://openweathermap.org/img/wn/${t.icon}.png" width="30">
+                    <div style="font-weight:bold;">${t.temp}℃</div>
+                    <div style="font-size:0.6rem; color:#94a3b8;">${t.wind}m</div>
+                </div>
+            `).join('');
+
+            // 知見カード
             if (data.pastInsights && data.pastInsights.length > 0) {
-                insightList.innerHTML = data.pastInsights.map(i => `
+                document.getElementById('insightList').innerHTML = data.pastInsights.map(i => `
                     <div class="insight-item">
-                        <span class="badge ${i.importance >= 4 ? 'badge-danger' : ''}">重要度 ${i.importance}</span>
-                        <span style="font-size:0.7rem; color:#8899a6; float:right;">${i.date}</span><br>
-                        <strong style="color:var(--accent)">${i.topic}</strong>
-                        <div style="color:#cbd5e1; margin-top:5px; font-size:0.8rem;">${i.content}</div>
+                        <span class="badge">重要度 ${i.importance}</span> <strong>${i.topic}</strong><br>
+                        <span style="color:#94a3b8">${i.content}</span>
                     </div>
                 `).join('');
                 document.getElementById('insightCard').style.display = 'block';
             } else {
                 document.getElementById('insightCard').style.display = 'none';
             }
-        } catch(e) { 
-            console.error(e);
-            alert("解析に失敗しました。GASのデプロイ設定とスプレッドシートの共有設定を確認してください。"); 
-        } finally {
-            loader.style.display = 'none';
-        }
+
+        } catch(e) { alert("エラーが発生しました。URLや設定を確認してください。"); }
+        document.getElementById('loader').style.display = 'none';
     }
 </script>
 </body>
