@@ -152,7 +152,65 @@
             document.getElementById('resTimeline').innerHTML = data.timeline.map(t => `<div class="t-item"><div style="font-size:0.6rem; color:var(--accent);">${t.time}</div><img src="https://openweathermap.org/img/wn/${t.icon}.png" width="30"><div>${t.temp}℃</div></div>`).join('');
         } catch(e) { alert("エラー"); }
         document.getElementById('loader').style.display = 'none';
-    }
+    }async function diagnose() {
+    document.getElementById('loader').style.display = 'flex';
+    try {
+        const loc = document.getElementById('loc').value;
+        const res = await fetch(`${gasUrl}?mode=diagnose&place=${encodeURIComponent(loc)}`);
+        const data = await res.json();
+        
+        document.getElementById('resultArea').style.display = 'block';
+        document.getElementById('resLoc').innerText = data.locationName;
+        document.getElementById('resScore').innerText = data.score;
+        document.getElementById('resReason').innerText = `(${data.scoreReason})`;
+        updateGauge(data.score);
+
+        let html = "";
+        
+        // 🚨 重大アラート表示 (赤枠)
+        if (data.criticalAlerts && data.criticalAlerts.length > 0) {
+            html += `<div style="border: 3px solid #ef4444; background: #450a0a; padding: 15px; border-radius: 20px; margin-bottom: 15px; text-align: left;">
+                        <div style="color: #ef4444; font-weight: 900; font-size: 1.1rem; margin-bottom: 8px;">⚠️ CRITICAL ALERT</div>`;
+            data.criticalAlerts.forEach(a => {
+                html += `<div style="margin-bottom: 10px; border-bottom: 1px solid #6b1414; padding-bottom: 8px;">
+                            <span style="background:#ef4444; color:white; padding:2px 6px; border-radius:4px; font-size:0.6rem; vertical-align:middle; font-weight:bold;">${a.category}</span>
+                            <span style="color:#fca5a5; font-size:0.7rem; float:right;">${a.severity}</span>
+                            <div style="font-weight:bold; margin-top:6px; color:white; line-height:1.4;">${a.content}</div>
+                         </div>`;
+            });
+            html += `</div>`;
+        }
+
+        // ✅ 先人の知恵 (日記から)
+        if (data.localInsights && data.localInsights.length > 0) {
+            html += `<div class="tag">🚨 先人たちの要注意報告</div>`;
+            data.localInsights.forEach(i => {
+                html += `<div class="insight-box local-info">
+                            <div style="font-size:0.7rem; font-weight:bold; opacity:0.8; margin-bottom:4px;">${i.label}</div>
+                            <div style="font-weight:bold;">「${i.content}」</div>
+                         </div>`;
+            });
+        }
+
+        // 🛡️ 基本装備と詳細
+        html += `<div class="tag">🛡️ 推奨装備</div>
+                 <div class="insight-box" style="background:rgba(255,255,255,0.05);">
+                    ${data.score > 40 ? "<div>✅ 鍛造ペグ推奨</div>" : "<div>✅ 通常装備でOK</div>"}
+                    <div>✅ 天候に合わせた装備準備</div>
+                 </div>
+                 <div class="detail-grid">
+                    <div>風速<br><b>${data.maxWind}</b>m/s</div>
+                    <div>最高<br><b>${data.maxTemp}</b>℃</div>
+                    <div>最低<br><b>${data.minTemp}</b>℃</div>
+                    <div>雨量<br><b>${data.maxRain}</b>mm</div>
+                 </div>`;
+        
+        document.getElementById('insightContainer').innerHTML = html;
+        document.getElementById('resTimeline').innerHTML = data.timeline.map(t => `<div class="t-item"><div style="font-size:0.6rem; color:var(--accent);">${t.time}</div><img src="https://openweathermap.org/img/wn/${t.icon}.png" width="30"><div>${t.temp}℃</div></div>`).join('');
+        
+    } catch(e) { alert("診断エラー"); }
+    document.getElementById('loader').style.display = 'none';
+}
 
     function updateGauge(score) {
         const ctx = document.getElementById('gaugeChart').getContext('2d');
