@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CampGuard Expert</title>
+    <title>CampGuard Expert v12.5</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         :root { --bg: #0b0f1a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --warning: #f59e0b; }
@@ -12,14 +12,14 @@
         .page { display: none; animation: fadeIn 0.3s ease; } .active { display: block; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .main-card { background: var(--card); border-radius: 28px; padding: 20px; text-align: center; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.08); }
-        .gauge-outer { position: relative; height: 160px; margin-bottom: 10px; }
+        .gauge-outer { position: relative; height: 160px; }
         .score-display { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; }
         .score-num { font-size: 5rem; font-weight: 900; line-height: 1; }
         .search-box { display: flex; gap: 8px; margin-bottom: 20px; }
-        input, textarea { flex: 1; padding: 14px; border-radius: 14px; border: 1px solid #334155; background: #0f172a; color: white; width: 100%; box-sizing: border-box; font-size: 16px; }
+        input, textarea { flex: 1; padding: 14px; border-radius: 14px; border: 1px solid #334155; background: #0f172a; color: white; width: 100%; box-sizing: border-box; font-size: 16px; outline: none; }
         .btn-diag { background: var(--accent); color: #0f172a; border: none; border-radius: 14px; padding: 0 24px; font-weight: bold; cursor: pointer; }
         .tag { font-size: 0.75rem; color: var(--accent); font-weight: bold; text-align: left; margin-top: 20px; margin-bottom: 8px; text-transform: uppercase; }
-        .bubble { background: rgba(255,255,255,0.04); padding: 16px; border-radius: 18px; font-size: 0.85rem; margin-bottom: 12px; border-left: 4px solid var(--accent); text-align: left; }
+        .bubble { background: rgba(255,255,255,0.04); padding: 16px; border-radius: 20px; font-size: 0.85rem; margin-bottom: 12px; border-left: 4px solid var(--accent); text-align: left; }
         .timeline { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; scrollbar-width: none; }
         .t-item { background: #334155; padding: 10px; border-radius: 12px; min-width: 65px; text-align: center; flex-shrink: 0; }
         .nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(30, 41, 59, 0.95); display: flex; justify-content: space-around; padding: 15px 0 25px 0; border-top: 1px solid rgba(255,255,255,0.1); z-index: 1000; }
@@ -35,9 +35,9 @@
 
 <div class="container">
     <div id="pageDiag" class="page active">
-        <h2 style="text-align:center;">CAMPGUARD <span style="color:var(--accent)">EXPERT</span></h2>
+        <h2 style="text-align:center; letter-spacing: 2px;">CAMPGUARD <span style="color:var(--accent)">EXPERT</span></h2>
         <div class="search-box">
-            <input type="text" id="loc" placeholder="キャンプ場名を入力" value="小倉橋">
+            <input type="text" id="loc" placeholder="キャンプ場名" value="">
             <button class="btn-diag" onclick="diagnose()">診断</button>
         </div>
         <div id="resultArea" style="display:none;">
@@ -52,14 +52,14 @@
     </div>
 
     <div id="pageDiary" class="page">
-        <h2 style="text-align:center;">My Diary</h2>
+        <h2 style="text-align:center;">Share Wisdom</h2>
         <div class="main-card" style="text-align:left;">
-            <div class="tag" style="margin-top:0;">📅 キャンプ実施日</div>
+            <div class="tag" style="margin-top:0;">📅 実施日</div>
             <input type="date" id="dDate" style="margin-bottom:15px;">
-            <input type="text" id="dPlace" placeholder="📍 キャンプ場（例：小倉橋）" style="margin-bottom:12px;">
-            <input type="text" id="dTopic" placeholder="🏷️ タイトル（例：北風の抜け道）" style="margin-bottom:12px;">
-            <textarea id="dContent" placeholder="✍️ ここに書いた知恵がみんなを助けます。「夜は川風が強い」「厚手のマット必須」など..." style="height:120px;"></textarea>
-            <button onclick="saveDiary()" style="width:100%; padding:16px; margin-top:20px; background:var(--accent); border:none; border-radius:14px; font-weight:bold; color:#0f172a;">保存して知恵を共有</button>
+            <input type="text" id="dPlace" placeholder="📍 キャンプ場名" style="margin-bottom:12px;">
+            <input type="text" id="dTopic" placeholder="🏷️ 教訓のタイトル" style="margin-bottom:12px;">
+            <textarea id="dContent" placeholder="✍️ 誰かを助ける具体的な知恵を...（例：川風が強いので耳栓必須。30cmペグが必要。）" style="height:120px;"></textarea>
+            <button onclick="saveDiary()" style="width:100%; padding:16px; margin-top:20px; background:var(--accent); border:none; border-radius:14px; font-weight:bold; color:#0f172a;">知恵を共有する</button>
         </div>
     </div>
 
@@ -71,7 +71,7 @@
 
 <div class="nav">
     <div class="nav-item active" onclick="switchPage('pageDiag', this)">診断</div>
-    <div class="nav-item" onclick="switchPage('pageDiary', this)">日記</div>
+    <div class="nav-item" onclick="switchPage('pageDiary', this)">投稿</div>
     <div class="nav-item" onclick="loadHistory(this)">履歴</div>
 </div>
 
@@ -97,10 +97,26 @@
             updateGauge(data.score);
 
             let html = `
-                <div style="font-size:0.75rem; opacity:0.6; margin-bottom:8px;">${data.scoreReason}</div>
-                <div style="background:rgba(56, 189, 248, 0.1); padding:16px; border-radius:16px; margin:10px 0; font-size:0.95rem; font-weight:bold; border:1px solid rgba(56,189,248,0.3);">${data.alertTitle}</div>
+                <div style="font-size:0.75rem; opacity:0.6; margin-bottom:10px;">${data.scoreReason}</div>
+                <div style="background:rgba(56, 189, 248, 0.1); padding:14px; border-radius:16px; margin:12px 0; font-size:0.95rem; font-weight:bold; border:1px solid rgba(56,189,248,0.3);">${data.alertTitle}</div>
+            `;
+
+            if(data.localInsights && data.localInsights.length > 0) {
+                html += `<div class="tag" style="margin-top:28px; color:var(--warning);">🔑 現場ナレッジ（教訓）</div>`;
+                data.localInsights.forEach(i => {
+                    html += `
+                        <div class="bubble" style="border-left-color:var(--warning); background:rgba(245,158,11,0.06); margin-bottom:10px;">
+                            <div style="font-size:0.65rem; color:var(--warning); font-weight:bold; margin-bottom:4px; display:flex; justify-content:space-between;">
+                                <span>📌 ${i.topic}</span><span>${i.date}</span>
+                            </div>
+                            <div style="font-size:0.95rem; font-weight:bold; color:#fff; line-height:1.4;">「${i.content}」</div>
+                        </div>`;
+                });
+            }
+
+            html += `
                 <div style="text-align:left; margin-top:20px;">
-                    <div class="tag">🛡️ 推奨装備チェック</div>
+                    <div class="tag">🛡️ 予報に基づく装備</div>
                     <div class="bubble">${data.checkList.map(item => `<div>✅ ${item}</div>`).join('')}</div>
                 </div>
                 <div class="detail-grid">
@@ -108,24 +124,11 @@
                 </div>
             `;
 
-            if(data.localInsights && data.localInsights.length > 0) {
-                html += `<div class="tag" style="margin-top:28px; color:var(--warning);">💡 先人たちの教訓</div>`;
-                data.localInsights.forEach(i => {
-                    html += `
-                        <div class="bubble" style="border-left-color:var(--warning); background:rgba(245,158,11,0.06);">
-                            <div style="font-size:0.65rem; color:var(--warning); font-weight:bold; margin-bottom:4px; display:flex; justify-content:space-between;">
-                                <span>📍 ${i.topic}</span><span>${i.date}</span>
-                            </div>
-                            <div style="font-size:0.85rem; opacity:0.9;">「${i.content}」</div>
-                        </div>`;
-                });
-            }
-
             document.getElementById('insightContainer').innerHTML = html;
             document.getElementById('resTimeline').innerHTML = data.timeline.map(t => `
                 <div class="t-item"><div style="font-size:0.6rem; color:var(--accent);">${t.time}</div><img src="https://openweathermap.org/img/wn/${t.icon}.png" width="30"><div>${t.temp}℃</div></div>
             `).join('');
-        } catch(e) { alert("診断失敗"); }
+        } catch(e) { alert("診断に失敗しました。URLを確認してください。"); }
         document.getElementById('loader').style.display = 'none';
     }
 
@@ -141,13 +144,11 @@
         const place = document.getElementById('dPlace').value;
         const topic = document.getElementById('dTopic').value;
         const content = document.getElementById('dContent').value;
-        if(!date || !place || !topic || !content) return alert("全て入力してください");
-        
+        if(!date || !place || !topic || !content) return alert("入力漏れがあります。");
         document.getElementById('loader').style.display = 'flex';
         try {
-            const url = `${gasUrl}?mode=postDiary&place=${encodeURIComponent(place)}&topic=${encodeURIComponent(topic)}&content=${encodeURIComponent(content)}&campDate=${encodeURIComponent(date)}`;
-            await fetch(url, {mode: 'no-cors'});
-            alert("保存しました！知恵が共有されました。");
+            await fetch(`${gasUrl}?mode=postDiary&place=${encodeURIComponent(place)}&topic=${encodeURIComponent(topic)}&content=${encodeURIComponent(content)}&campDate=${encodeURIComponent(date)}`, {mode: 'no-cors'});
+            alert("教訓を登録しました！");
             document.getElementById('dTopic').value = ""; document.getElementById('dContent').value = "";
             switchPage('pageDiag', document.querySelectorAll('.nav-item')[0]);
         } catch(e) { alert("保存失敗"); }
@@ -157,18 +158,18 @@
     async function loadHistory(el) {
         switchPage('pageHistory', el);
         const list = document.getElementById('historyList');
-        list.innerHTML = "読み込み中...";
+        list.innerHTML = "読込中...";
         try {
             const res = await fetch(`${gasUrl}?mode=getDiaries`);
             const data = await res.json();
             list.innerHTML = data.length ? data.map(d => `
                 <div class="main-card" style="text-align:left;">
-                    <div style="color:var(--accent); font-size:0.7rem; font-weight:bold;">📅 ${d.campDate} @${d.place}</div>
-                    <div style="font-weight:bold; margin:8px 0;">${d.topic}</div>
-                    <div style="opacity:0.8; font-size:0.85rem;">${d.content}</div>
+                    <div style="color:var(--accent); font-size:0.75rem; font-weight:bold;">📅 ${d.campDate} @${d.place}</div>
+                    <div style="font-weight:bold; margin:8px 0; font-size:1.1rem;">${d.topic}</div>
+                    <div style="opacity:0.8; font-size:0.9rem; line-height:1.6;">${d.content}</div>
                 </div>
             `).join('') : "履歴なし";
-        } catch(e) { alert("履歴取得失敗"); }
+        } catch(e) { alert("読込失敗"); }
     }
 </script>
 </body>
