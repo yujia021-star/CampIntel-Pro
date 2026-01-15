@@ -14,9 +14,10 @@
         #loginOverlay { position: fixed; inset: 0; background: var(--bg); z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 20px; }
         .login-card { background: var(--card); width: 100%; max-width: 350px; padding: 30px; border-radius: 28px; border: 1px solid rgba(255,255,255,0.1); text-align: center; }
         .main-card { background: var(--card); border-radius: 28px; padding: 20px; text-align: center; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.08); }
-        .gauge-outer { position: relative; height: 160px; }
+        .gauge-outer { position: relative; height: 160px; margin-bottom: 10px; }
         .score-display { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; }
         .score-num { font-size: 5rem; font-weight: 900; line-height: 1; }
+        .score-reason { font-size: 0.75rem; opacity: 0.6; margin-top: 5px; }
         input, textarea { width: 100%; padding: 14px; border-radius: 14px; border: 1px solid #334155; background: #0f172a; color: white; margin-bottom: 12px; outline: none; box-sizing: border-box; font-size: 16px; }
         .btn-primary { background: var(--accent); color: #0f172a; border: none; border-radius: 14px; padding: 14px; font-weight: bold; width: 100%; cursor: pointer; }
         .tag { font-size: 0.75rem; color: var(--accent); font-weight: bold; text-align: left; margin-top: 20px; margin-bottom: 8px; text-transform: uppercase; }
@@ -34,11 +35,11 @@
 </head>
 <body>
 
-<div id="loader" class="loading">全ユーザーの知恵を解析中...</div>
+<div id="loader" class="loading">解析中...</div>
 
 <div id="loginOverlay">
     <div class="login-card" id="cardLogin">
-        <h2>CAMPGUARD</h2>
+        <h2 style="letter-spacing: 2px;">CAMPGUARD</h2>
         <input type="text" id="uid" placeholder="ユーザーID">
         <input type="password" id="pwd" placeholder="パスワード">
         <button class="btn-primary" onclick="attemptLogin()">ログイン</button>
@@ -47,18 +48,26 @@
 
 <div class="container" id="mainApp" style="display:none;">
     <div id="pageDiag" class="page active">
-        <h2 style="text-align:center;">CAMPGUARD <span style="color:var(--accent)">EXPERT</span></h2>
+        <h2 style="text-align:center; font-weight: 900;">CAMPGUARD <span style="color:var(--accent)">EXPERT</span></h2>
         <div style="display:flex; gap:8px; margin-bottom:20px;">
             <input type="text" id="loc" placeholder="キャンプ場名" value="ふもとっぱら" style="margin:0;">
             <button class="btn-primary" onclick="diagnose()" style="width:80px; padding:0;">診断</button>
         </div>
+        
         <div id="resultArea" style="display:none;">
             <div class="main-card">
                 <div id="resLoc" style="font-size:0.9rem; color:var(--accent); font-weight: bold; margin-bottom:12px;"></div>
-                <div class="gauge-outer"><canvas id="gaugeChart"></canvas><div class="score-display"><div id="resScore" class="score-num">0</div></div></div>
+                <div class="gauge-outer">
+                    <canvas id="gaugeChart"></canvas>
+                    <div class="score-display">
+                        <div id="resScore" class="score-num">0</div>
+                        <div id="resReason" class="score-reason"></div>
+                    </div>
+                </div>
+                
                 <div id="insightContainer"></div>
             </div>
-            <div class="tag">🕒 Hourly Forecast</div>
+            <div class="tag">🕒 HOURLY FORECAST</div>
             <div id="resTimeline" class="timeline"></div>
         </div>
     </div>
@@ -68,14 +77,14 @@
         <div class="main-card" style="text-align:left;">
             <input type="date" id="dDate">
             <input type="text" id="dPlace" placeholder="📍 キャンプ場名">
-            <input type="text" id="dTopic" placeholder="🏷️ タイトル">
-            <textarea id="dContent" placeholder="苦労したことや、マナー面での困りごと（騒音など）、地面の状態などを記録してください。他のキャンパーを助ける知恵になります。" style="height:150px;"></textarea>
+            <input type="text" id="dTopic" placeholder="🏷️ 教訓のタイトル">
+            <textarea id="dContent" placeholder="具体的な知恵（例：夜に騒ぐ人がいたので耳栓必須、地面が硬すぎて鍛造ペグ以外刺さらなかった、など）" style="height:150px;"></textarea>
             <button class="btn-primary" onclick="saveDiary()">知恵を公開する</button>
         </div>
     </div>
 
     <div id="pageHistory" class="page">
-        <h2 style="text-align:center;">My Activity Log</h2>
+        <h2 style="text-align:center;">Activity Log</h2>
         <div id="historyList"></div>
     </div>
 </div>
@@ -83,12 +92,12 @@
 <div class="nav" id="mainNav" style="display:none;">
     <div class="nav-item active" onclick="switchPage('pageDiag', this)">診断</div>
     <div class="nav-item" onclick="switchPage('pageDiary', this)">日記を書く</div>
-    <div class="nav-item" onclick="loadHistory(this)">自分の履歴</div>
+    <div class="nav-item" onclick="loadHistory(this)">履歴</div>
     <div class="nav-item" onclick="logout()" style="color:#ef4444;">ログアウト</div>
 </div>
 
 <script>
-    const gasUrl = "https://script.google.com/macros/s/AKfycbyqDTFt6HyyWfDLJJTkB2hQfSik9oJJfmIJBsRZ4U_kacbxYjlE2lB759s7scGMhaHx/exec";
+    const gasUrl = "★ここにデプロイURLを貼る★";
     let myChart;
 
     function showApp() { document.getElementById('loginOverlay').style.display = 'none'; document.getElementById('mainApp').style.display = 'block'; document.getElementById('mainNav').style.display = 'flex'; }
@@ -119,10 +128,10 @@
             document.getElementById('resultArea').style.display = 'block';
             document.getElementById('resLoc').innerText = data.locationName;
             document.getElementById('resScore').innerText = data.score;
+            document.getElementById('resReason').innerText = `(${data.scoreReason})`;
             updateGauge(data.score);
 
-            let html = `<div style="font-size:0.75rem; opacity:0.6; margin-bottom:10px;">${data.scoreReason}</div>
-                        <div style="background:rgba(56, 189, 248, 0.1); padding:14px; border-radius:16px; margin:12px 0; font-size:0.95rem; font-weight:bold; border:1px solid rgba(56,189,248,0.3); color:white;">${data.alertTitle}</div>`;
+            let html = `<div style="background:rgba(56, 189, 248, 0.1); padding:14px; border-radius:16px; margin:12px 0; font-size:1rem; font-weight:bold; border:1px solid rgba(56,189,248,0.3); color:white;">${data.alertTitle}</div>`;
             
             if(data.localInsights?.length > 0) {
                 html += `<div class="tag">🚨 先人たちの要注意報告</div>`;
@@ -131,7 +140,7 @@
                     html += `<div class="insight-box ${cssClass}">
                                 <div style="font-size:0.7rem; font-weight:bold; opacity:0.8; margin-bottom:4px;">${i.label}</div>
                                 <div style="font-weight:bold; line-height:1.4;">${i.content}</div>
-                                <div style="font-size:0.6rem; margin-top:6px; opacity:0.5; text-align:right;">ソース: ${i.originalPlace}</div>
+                                <div style="font-size:0.6rem; margin-top:6px; opacity:0.5; text-align:right;">by ${i.originalPlace}</div>
                              </div>`;
                 });
             }
@@ -171,7 +180,7 @@
         const uid = localStorage.getItem('campGuardUser');
         const res = await fetch(`${gasUrl}?mode=getDiaries&uid=${encodeURIComponent(uid)}`);
         const data = await res.json();
-        list.innerHTML = data.length ? data.map(d => `<div class="main-card" style="text-align:left;"><div style="color:var(--accent); font-size:0.75rem;">🗓️ ${d.campDate} @${d.place}</div><div style="font-weight:bold; margin:8px 0;">${d.topic}</div><div style="opacity:0.8; font-size:0.9rem;">${d.content}</div></div>`).join('') : "日記はありません";
+        list.innerHTML = data.length ? data.map(d => `<div class="main-card" style="text-align:left;"><div style="color:var(--accent); font-size:0.75rem;">🗓️ ${d.campDate} @${d.place}</div><div style="font-weight:bold; margin:8px 0;">${d.topic}</div><div style="opacity:0.8; font-size:0.9rem;">${d.content}</div></div>`).join('') : "履歴はありません";
     }
 
     function switchPage(id, el) {
