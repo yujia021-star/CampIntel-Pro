@@ -8,8 +8,7 @@ async function diagnose() {
         document.getElementById('resultArea').style.display = 'block';
         document.getElementById('resLoc').innerText = data.locationName;
         document.getElementById('resScore').innerText = data.score;
-        // スコアの理由を表示
-        document.getElementById('resReason').innerText = `(${data.scoreReason})`;
+        document.getElementById('resReason').innerText = `(${data.scoreReason})`; // スコア解説を表示
         updateGauge(data.score);
 
         let html = "";
@@ -21,7 +20,7 @@ async function diagnose() {
             data.criticalAlerts.forEach(a => {
                 html += `<div style="font-size:0.8rem; margin-bottom:8px; color:white;">
                             <span style="background:#ff4444; padding:2px 5px; border-radius:4px; font-size:0.7rem;">${a.category}</span> 
-                            ${a.content} ${a.severity}
+                            ${a.content} ${a.severity} (${a.date})
                          </div>`;
             });
             html += `</div>`;
@@ -31,8 +30,8 @@ async function diagnose() {
         if (data.localInsights && data.localInsights.length > 0) {
             html += `<div class="tag">📔 先人たちの知恵と警告</div>`;
             data.localInsights.forEach(i => {
-                html += `<div class="insight-box" style="background:rgba(0,150,255,0.1); margin-bottom:10px; border-left:4px solid #0096ff;">
-                            <div style="font-size:0.85rem;">「${i.content}」</div>
+                html += `<div class="insight-box" style="background:rgba(0,150,255,0.1); margin-bottom:10px; border-left:4px solid #0096ff; padding:10px; border-radius:8px;">
+                            <div style="font-size:0.85rem; line-height:1.4;">「${i.content}」</div>
                          </div>`;
             });
         }
@@ -45,15 +44,7 @@ async function diagnose() {
                  </div>`;
         
         document.getElementById('insightContainer').innerHTML = html;
-        
-        // タイムラインの表示
-        document.getElementById('resTimeline').innerHTML = data.timeline.map(t => `
-            <div class="t-item">
-                <div style="font-size:0.6rem; color:var(--accent);">${t.time}</div>
-                <img src="https://openweathermap.org/img/wn/${t.icon}.png" width="30">
-                <div>${t.temp}℃</div>
-            </div>
-        `).join('');
+        document.getElementById('resTimeline').innerHTML = data.timeline.map(t => `<div class="t-item"><div style="font-size:0.6rem; color:var(--accent);">${t.time}</div><img src="https://openweathermap.org/img/wn/${t.icon}.png" width="30"><div>${t.temp}℃</div></div>`).join('');
         
     } catch(e) { alert("診断エラーが発生しました。"); }
     document.getElementById('loader').style.display = 'none';
