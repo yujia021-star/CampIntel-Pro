@@ -1,158 +1,4 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CampGuard Expert Pro</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <style>
-        :root { --bg: #0b0f1a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --warning: #ef4444; --general: #10b981; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-bottom: 90px; }
-        .container { max-width: 480px; margin: 0 auto; padding: 15px; }
-        .page { display: none; animation: fadeIn 0.3s ease; } .active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        #loginOverlay { position: fixed; inset: 0; background: var(--bg); z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .login-card { background: var(--card); width: 100%; max-width: 350px; padding: 30px; border-radius: 28px; border: 1px solid rgba(255,255,255,0.1); text-align: center; }
-        .main-card { background: var(--card); border-radius: 28px; padding: 20px; text-align: center; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.08); }
-        .gauge-outer { position: relative; height: 160px; margin-bottom: 10px; }
-        .score-display { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; }
-        .score-num { font-size: 5rem; font-weight: 900; line-height: 1; }
-        .score-reason { font-size: 0.75rem; opacity: 0.6; margin-top: 5px; }
-        input, textarea { width: 100%; padding: 14px; border-radius: 14px; border: 1px solid #334155; background: #0f172a; color: white; margin-bottom: 12px; outline: none; box-sizing: border-box; font-size: 16px; }
-        .btn-primary { background: var(--accent); color: #0f172a; border: none; border-radius: 14px; padding: 14px; font-weight: bold; width: 100%; cursor: pointer; }
-        .tag { font-size: 0.75rem; color: var(--accent); font-weight: bold; text-align: left; margin-top: 20px; margin-bottom: 8px; text-transform: uppercase; }
-        .insight-box { padding: 16px; border-radius: 20px; font-size: 0.95rem; margin-bottom: 12px; text-align: left; }
-        .local-info { border-left: 4px solid var(--warning); background: rgba(239, 68, 68, 0.08); }
-        .general-info { border-left: 4px solid var(--general); background: rgba(16, 185, 129, 0.08); }
-        .timeline { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; scrollbar-width: none; }
-        .t-item { background: #334155; padding: 10px; border-radius: 12px; min-width: 65px; text-align: center; flex-shrink: 0; }
-        .nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(30, 41, 59, 0.95); display: flex; justify-content: space-around; padding: 15px 0 25px 0; border-top: 1px solid rgba(255,255,255,0.1); z-index: 1000; }
-        .nav-item { cursor: pointer; font-size: 0.7rem; opacity: 0.4; color: white; text-align: center; }
-        .nav-item.active { opacity: 1; color: var(--accent); }
-        .loading { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 4000; }
-        .detail-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; font-size: 0.65rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; margin-top: 15px; }
-    </style>
-</head>
-<body>
-
-<div id="loader" class="loading">知恵を解析中...</div>
-
-<div id="loginOverlay">
-    <div class="login-card" id="cardLogin">
-        <h2>CAMPGUARD</h2>
-        <input type="text" id="uid" placeholder="ユーザーID">
-        <input type="password" id="pwd" placeholder="パスワード">
-        <button class="btn-primary" onclick="attemptLogin()">ログイン</button>
-    </div>
-</div>
-
-<div class="container" id="mainApp" style="display:none;">
-    <div id="pageDiag" class="page active">
-        <h2 style="text-align:center;">CAMPGUARD <span style="color:var(--accent)">EXPERT</span></h2>
-        <div style="display:flex; gap:8px; margin-bottom:20px;">
-            <input type="text" id="loc" placeholder="キャンプ場名" value="ふもとっぱら" style="margin:0;">
-            <button class="btn-primary" onclick="diagnose()" style="width:80px; padding:0;">診断</button>
-        </div>
-        <div id="resultArea" style="display:none;">
-            <div class="main-card">
-                <div id="resLoc" style="font-size:0.9rem; color:var(--accent); font-weight: bold; margin-bottom:12px;"></div>
-                <div class="gauge-outer">
-                    <canvas id="gaugeChart"></canvas>
-                    <div class="score-display">
-                        <div id="resScore" class="score-num">0</div>
-                        <div id="resReason" class="score-reason"></div>
-                    </div>
-                </div>
-                <div id="insightContainer"></div>
-            </div>
-            <div class="tag">🕒 Hourly Forecast</div>
-            <div id="resTimeline" class="timeline"></div>
-        </div>
-    </div>
-
-    <div id="pageDiary" class="page">
-        <h2 style="text-align:center;">Share Wisdom</h2>
-        <div class="main-card" style="text-align:left;">
-            <input type="date" id="dDate">
-            <input type="text" id="dPlace" placeholder="📍 キャンプ場名">
-            <input type="text" id="dTopic" placeholder="🏷️ タイトル">
-            <textarea id="dContent" placeholder="困ったこと、騒音、地面の状態などを記録してください..."></textarea>
-            <button class="btn-primary" onclick="saveDiary()">知恵を公開する</button>
-        </div>
-    </div>
-
-    <div id="pageHistory" class="page">
-        <h2 style="text-align:center;">My Activity Log</h2>
-        <div id="historyList"></div>
-    </div>
-</div>
-
-<div class="nav" id="mainNav" style="display:none;">
-    <div class="nav-item active" onclick="switchPage('pageDiag', this)">診断</div>
-    <div class="nav-item" onclick="switchPage('pageDiary', this)">日記を書く</div>
-    <div class="nav-item" onclick="loadHistory(this)">自分の履歴</div>
-    <div class="nav-item" onclick="logout()" style="color:#ef4444;">ログアウト</div>
-</div>
-
-<script>
-    const gasUrl = "https://script.google.com/macros/s/AKfycbyqDTFt6HyyWfDLJJTkB2hQfSik9oJJfmIJBsRZ4U_kacbxYjlE2lB759s7scGMhaHx/exec";
-    let myChart;
-
-    function showApp() { document.getElementById('loginOverlay').style.display = 'none'; document.getElementById('mainApp').style.display = 'block'; document.getElementById('mainNav').style.display = 'flex'; }
-    function logout() { localStorage.removeItem('campGuardUser'); location.reload(); }
-
-    async function attemptLogin() {
-        const uid = document.getElementById('uid').value.trim();
-        const pwd = document.getElementById('pwd').value.trim();
-        if(!uid || !pwd) return;
-        document.getElementById('loader').style.display = 'flex';
-        try {
-            const res = await fetch(`${gasUrl}?mode=login&uid=${encodeURIComponent(uid)}&pwd=${encodeURIComponent(pwd)}`);
-            const result = await res.text();
-            if (result === "success") {
-                localStorage.setItem('campGuardUser', uid);
-                showApp();
-            } else { alert("認証に失敗しました"); }
-        } catch(e) { alert("通信エラー"); }
-        document.getElementById('loader').style.display = 'none';
-    }
-
-    if (localStorage.getItem('campGuardUser')) showApp();
-
-    async function diagnose() {
-        document.getElementById('loader').style.display = 'flex';
-        try {
-            const loc = document.getElementById('loc').value;
-            const res = await fetch(`${gasUrl}?mode=diagnose&place=${encodeURIComponent(loc)}`);
-            const data = await res.json();
-            document.getElementById('resultArea').style.display = 'block';
-            document.getElementById('resLoc').innerText = data.locationName;
-            document.getElementById('resScore').innerText = data.score;
-            document.getElementById('resReason').innerText = `(${data.scoreReason})`;
-            updateGauge(data.score);
-
-            let html = `<div style="background:rgba(56, 189, 248, 0.1); padding:14px; border-radius:16px; margin:12px 0; font-size:1rem; font-weight:bold; border:1px solid rgba(56,189,248,0.3); color:white;">${data.alertTitle}</div>`;
-            
-            if(data.localInsights?.length > 0) {
-                html += `<div class="tag">🚨 先人たちの要注意報告</div>`;
-                data.localInsights.forEach(i => {
-                    const cssClass = i.type === 'local' ? 'local-info' : 'general-info';
-                    html += `<div class="insight-box ${cssClass}">
-                                <div style="font-size:0.7rem; font-weight:bold; opacity:0.8; margin-bottom:4px;">${i.label}</div>
-                                <div style="font-weight:bold;">${i.content}</div>
-                                <div style="font-size:0.6rem; margin-top:6px; opacity:0.5; text-align:right;">元ネタ: ${i.originalPlace}</div>
-                             </div>`;
-                });
-            }
-
-            html += `<div class="tag">🛡️ 推奨装備</div><div class="insight-box" style="background:rgba(255,255,255,0.05);">${data.checkList.map(item => `<div>✅ ${item}</div>`).join('')}</div>
-                     <div class="detail-grid"><div>風速<br><b>${data.maxWind}</b>m/s</div><div>最高<br><b>${data.maxTemp}</b>℃</div><div>最低<br><b>${data.minTemp}</b>℃</div><div>雨量<br><b>${data.maxRain}</b>mm</div></div>`;
-            
-            document.getElementById('insightContainer').innerHTML = html;
-            document.getElementById('resTimeline').innerHTML = data.timeline.map(t => `<div class="t-item"><div style="font-size:0.6rem; color:var(--accent);">${t.time}</div><img src="https://openweathermap.org/img/wn/${t.icon}.png" width="30"><div>${t.temp}℃</div></div>`).join('');
-        } catch(e) { alert("エラー"); }
-        document.getElementById('loader').style.display = 'none';
-    }async function diagnose() {
+async function diagnose() {
     document.getElementById('loader').style.display = 'flex';
     try {
         const loc = document.getElementById('loc').value;
@@ -162,90 +8,42 @@
         document.getElementById('resultArea').style.display = 'block';
         document.getElementById('resLoc').innerText = data.locationName;
         document.getElementById('resScore').innerText = data.score;
-        document.getElementById('resReason').innerText = `(${data.scoreReason})`;
+        document.getElementById('resReason').innerText = `(${data.scoreReason})`; // スコア解説を表示
         updateGauge(data.score);
 
         let html = "";
         
-        // 🚨 重大アラート表示 (赤枠)
+        // 1. 【最優先】最新のニュース・重大リスク (赤枠)
         if (data.criticalAlerts && data.criticalAlerts.length > 0) {
-            html += `<div style="border: 3px solid #ef4444; background: #450a0a; padding: 15px; border-radius: 20px; margin-bottom: 15px; text-align: left;">
-                        <div style="color: #ef4444; font-weight: 900; font-size: 1.1rem; margin-bottom: 8px;">⚠️ CRITICAL ALERT</div>`;
+            html += `<div style="border: 2px solid #ff4444; background: rgba(255,0,0,0.1); padding: 15px; border-radius: 15px; margin-bottom: 20px;">
+                        <h4 style="color:#ff4444; margin:0 0 10px 0; font-size:0.9rem;">⚠️ 直近のリスク情報</h4>`;
             data.criticalAlerts.forEach(a => {
-                html += `<div style="margin-bottom: 10px; border-bottom: 1px solid #6b1414; padding-bottom: 8px;">
-                            <span style="background:#ef4444; color:white; padding:2px 6px; border-radius:4px; font-size:0.6rem; vertical-align:middle; font-weight:bold;">${a.category}</span>
-                            <span style="color:#fca5a5; font-size:0.7rem; float:right;">${a.severity}</span>
-                            <div style="font-weight:bold; margin-top:6px; color:white; line-height:1.4;">${a.content}</div>
+                html += `<div style="font-size:0.8rem; margin-bottom:8px; color:white;">
+                            <b>[${a.category}]</b> ${a.content} ${a.severity}
                          </div>`;
             });
             html += `</div>`;
         }
 
-        // ✅ 先人の知恵 (日記から)
+        // 2. 【日記から抽出】先人の知恵 (青枠)
         if (data.localInsights && data.localInsights.length > 0) {
-            html += `<div class="tag">🚨 先人たちの要注意報告</div>`;
+            html += `<div class="tag">📔 先人たちの要注意報告</div>`;
             data.localInsights.forEach(i => {
-                html += `<div class="insight-box local-info">
-                            <div style="font-size:0.7rem; font-weight:bold; opacity:0.8; margin-bottom:4px;">${i.label}</div>
-                            <div style="font-weight:bold;">「${i.content}」</div>
+                html += `<div class="insight-box" style="background:rgba(0,150,255,0.1); margin-bottom:10px; border:1px solid rgba(0,150,255,0.3);">
+                            <div style="font-size:0.85rem;">「${i.content}」</div>
                          </div>`;
             });
         }
 
-        // 🛡️ 基本装備と詳細
+        // 3. 推奨装備
         html += `<div class="tag">🛡️ 推奨装備</div>
                  <div class="insight-box" style="background:rgba(255,255,255,0.05);">
-                    ${data.score > 40 ? "<div>✅ 鍛造ペグ推奨</div>" : "<div>✅ 通常装備でOK</div>"}
-                    <div>✅ 天候に合わせた装備準備</div>
-                 </div>
-                 <div class="detail-grid">
-                    <div>風速<br><b>${data.maxWind}</b>m/s</div>
-                    <div>最高<br><b>${data.maxTemp}</b>℃</div>
-                    <div>最低<br><b>${data.minTemp}</b>℃</div>
-                    <div>雨量<br><b>${data.maxRain}</b>mm</div>
+                    ${data.score > 40 ? "<div>✅ 鍛造ペグ・冬用寝具を強く推奨</div>" : "<div>✅ 標準的な装備で対応可能です</div>"}
                  </div>`;
         
         document.getElementById('insightContainer').innerHTML = html;
         document.getElementById('resTimeline').innerHTML = data.timeline.map(t => `<div class="t-item"><div style="font-size:0.6rem; color:var(--accent);">${t.time}</div><img src="https://openweathermap.org/img/wn/${t.icon}.png" width="30"><div>${t.temp}℃</div></div>`).join('');
         
-    } catch(e) { alert("診断エラー"); }
+    } catch(e) { alert("診断エラーが発生しました"); }
     document.getElementById('loader').style.display = 'none';
 }
-
-    function updateGauge(score) {
-        const ctx = document.getElementById('gaugeChart').getContext('2d');
-        const color = score >= 70 ? '#ef4444' : (score >= 40 ? '#f59e0b' : '#10b981');
-        if (myChart) myChart.destroy();
-        myChart = new Chart(ctx, { type: 'doughnut', data: { datasets: [{ data: [score, 100 - score], backgroundColor: [color, 'rgba(255,255,255,0.05)'], borderWidth: 0, circumference: 180, rotation: 270, cutout: '90%' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } } });
-    }
-
-    async function saveDiary() {
-        const d = ["dDate","dPlace","dTopic","dContent"].map(id => document.getElementById(id).value);
-        const uid = localStorage.getItem('campGuardUser');
-        if(d.some(v => !v)) return alert("未入力があります");
-        document.getElementById('loader').style.display = 'flex';
-        await fetch(`${gasUrl}?mode=postDiary&place=${encodeURIComponent(d[1])}&topic=${encodeURIComponent(d[2])}&content=${encodeURIComponent(d[3])}&campDate=${encodeURIComponent(d[0])}&uid=${encodeURIComponent(uid)}`, {mode: 'no-cors'});
-        alert("教訓を共有しました！");
-        switchPage('pageDiag', document.querySelectorAll('.nav-item')[0]);
-        document.getElementById('loader').style.display = 'none';
-    }
-
-    async function loadHistory(el) {
-        switchPage('pageHistory', el);
-        const list = document.getElementById('historyList');
-        list.innerHTML = "読込中...";
-        const uid = localStorage.getItem('campGuardUser');
-        const res = await fetch(`${gasUrl}?mode=getDiaries&uid=${encodeURIComponent(uid)}`);
-        const data = await res.json();
-        list.innerHTML = data.length ? data.map(d => `<div class="main-card" style="text-align:left;"><div style="color:var(--accent); font-size:0.75rem;">🗓️ ${d.campDate} @${d.place}</div><div style="font-weight:bold; margin:8px 0;">${d.topic}</div><div style="opacity:0.8; font-size:0.9rem;">${d.content}</div></div>`).join('') : "日記はありません";
-    }
-
-    function switchPage(id, el) {
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        el.classList.add('active');
-    }
-</script>
-</body>
-</html>
