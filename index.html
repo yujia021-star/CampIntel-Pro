@@ -4,45 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CampGuard AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; background: #0a0c10; color: #fff; margin: 0; padding: 20px; }
-        .card { background: #161b22; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
-        input, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: none; }
-        button { background: #58a6ff; color: #000; font-weight: bold; }
+        body { font-family: 'Noto Sans JP', sans-serif; background: #0a0c10; color: #fff; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 400px; }
+        .card { background: #161b22; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h1 { font-family: 'Bebas Neue'; font-size: 2.5rem; color: #58a6ff; margin: 0; text-align: center; }
+        input { width: 100%; padding: 12px; margin: 10px 0; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; color: #fff; }
+        button { width: 100%; padding: 15px; background: #58a6ff; border: none; border-radius: 8px; color: #000; font-weight: bold; cursor: pointer; }
         #resultArea { display: none; text-align: center; }
-        .score-num { font-size: 3rem; font-weight: bold; color: #58a6ff; }
+        .score-num { font-family: 'Bebas Neue'; font-size: 4rem; color: #fff; margin: 10px 0; }
         .timeline { display: flex; overflow-x: auto; gap: 10px; padding: 10px 0; }
-        .t-item { min-width: 50px; background: rgba(255,255,255,0.1); padding: 5px; border-radius: 5px; font-size: 0.8rem; }
-        .insight-box { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; margin: 5px 0; font-size: 0.9rem; text-align: left; }
+        .t-item { min-width: 60px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; font-size: 0.8rem; }
+        .insight-box { background: rgba(88,166,255,0.1); padding: 10px; border-radius: 8px; margin-top: 10px; text-align: left; font-size: 0.9rem; }
     </style>
 </head>
 <body>
 
-<div id="loginArea" class="card">
-    <h2>CampGuard Login</h2>
-    <input type="text" id="uid" placeholder="User ID">
-    <input type="password" id="pwd" placeholder="Password">
-    <button onclick="login()">Login</button>
-</div>
-
-<div id="mainArea" style="display:none;">
-    <div class="card">
-        <input type="text" id="loc" placeholder="キャンプ場名" value="小倉橋">
-        <button onclick="diagnose()">診断開始</button>
+<div class="container">
+    <div id="loginArea" class="card">
+        <h1>CAMPGUARD AI</h1>
+        <input type="text" id="uid" placeholder="USER ID">
+        <input type="password" id="pwd" placeholder="PASSWORD">
+        <button onclick="login()">LOGIN</button>
     </div>
 
-    <div id="resultArea" class="card">
-        <h3 id="resLoc">---</h3>
-        <div class="score-num" id="resScore">0</div>
-        <p id="resReason"></p>
-        <div class="timeline" id="resTimeline"></div>
-        <div id="insightContainer"></div>
-    </div>
+    <div id="mainArea" style="display:none;">
+        <div class="card">
+            <input type="text" id="loc" placeholder="キャンプ場名" value="小倉橋">
+            <button onclick="diagnose()">診断開始</button>
+        </div>
 
-    <div class="card">
-        <h4>日記を投稿する</h4>
-        <input type="text" id="diaryContent" placeholder="例：地面が硬かった、静かだった">
-        <button onclick="postDiary()">投稿</button>
+        <div id="resultArea" class="card">
+            <h2 id="resLoc" style="margin:0;">---</h2>
+            <div class="score-num" id="resScore">0</div>
+            <p id="resReason" style="color:#58a6ff; font-weight:bold;"></p>
+            <div class="timeline" id="resTimeline"></div>
+            <div id="insightContainer"></div>
+        </div>
+
+        <div class="card">
+            <input type="text" id="diaryContent" placeholder="状況を報告（地面、混雑など）">
+            <button style="background:#30363d; color:#fff;" onclick="postDiary()">知恵を共有する</button>
+        </div>
     </div>
 </div>
 
@@ -56,7 +60,7 @@
             currentUser = document.getElementById('uid').value;
             document.getElementById('loginArea').style.display = 'none';
             document.getElementById('mainArea').style.display = 'block';
-        } else { alert("失敗"); }
+        } else { alert("ログイン失敗"); }
     }
 
     async function diagnose() {
@@ -67,15 +71,25 @@
         document.getElementById('resScore').innerText = data.score;
         document.getElementById('resReason').innerText = data.scoreReason;
         
-        document.getElementById('resTimeline').innerHTML = data.timeline.map(t => `<div class="t-item">${t.time}<br>${t.temp}℃</div>`).join('');
-        document.getElementById('insightContainer').innerHTML = data.localInsights.map(i => `<div class="insight-box">📔 ${i.content}</div>`).join('');
+        document.getElementById('resTimeline').innerHTML = data.timeline.map(t => `
+            <div class="t-item">
+                ${t.time}<br>
+                <img src="https://openweathermap.org/img/wn/${t.icon}.png" width="30"><br>
+                ${t.temp}℃
+            </div>
+        `).join('');
+        
+        document.getElementById('insightContainer').innerHTML = data.localInsights.map(i => `
+            <div class="insight-box">📔 ${i.content}</div>
+        `).join('');
     }
 
     async function postDiary() {
         const content = document.getElementById('diaryContent').value;
         const loc = document.getElementById('loc').value;
+        if(!content) return;
         await fetch(`${gasUrl}?mode=postDiary&uid=${currentUser}&place=${encodeURIComponent(loc)}&content=${encodeURIComponent(content)}`);
-        alert("投稿完了");
+        alert("投稿しました");
         document.getElementById('diaryContent').value = "";
     }
 </script>
