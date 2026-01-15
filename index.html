@@ -35,7 +35,7 @@
 </head>
 <body>
 
-<div id="loader" class="loading">知恵を解析中...</div>
+<div id="loader" class="loading">分析中...</div>
 
 <div id="loginOverlay">
     <div class="login-card" id="cardLogin">
@@ -50,8 +50,8 @@
     <div id="pageDiag" class="page active">
         <h2 style="text-align:center;">CAMPGUARD <span style="color:var(--accent)">EXPERT</span></h2>
         <div style="display:flex; gap:8px; margin-bottom:20px;">
-            <input type="text" id="loc" placeholder="キャンプ場名" value="ふもとっぱら" style="margin:0;">
-            <button class="btn-primary" onclick="diagnose()" style="width:80px; padding:0;">診断</button>
+            <input type="text" id="loc" placeholder="キャンプ場名" value="" style="margin:0;">
+            <button class="btn-primary" onclick="diagnose()" style="width:80px; padding:0;">判定</button>
         </div>
         <div id="resultArea" style="display:none;">
             <div class="main-card">
@@ -76,8 +76,8 @@
             <input type="date" id="dDate">
             <input type="text" id="dPlace" placeholder="📍 キャンプ場名">
             <input type="text" id="dTopic" placeholder="🏷️ タイトル">
-            <textarea id="dContent" placeholder="困ったこと、騒音、地面の状態などを記録してください..."></textarea>
-            <button class="btn-primary" onclick="saveDiary()">知恵を公開する</button>
+            <textarea id="dContent" placeholder="良かったこと、困ったことなどを記録してください..."></textarea>
+            <button class="btn-primary" onclick="saveDiary()">日記を登録する</button>
         </div>
     </div>
 
@@ -88,9 +88,9 @@
 </div>
 
 <div class="nav" id="mainNav" style="display:none;">
-    <div class="nav-item active" onclick="switchPage('pageDiag', this)">診断</div>
-    <div class="nav-item" onclick="switchPage('pageDiary', this)">日記を書く</div>
-    <div class="nav-item" onclick="loadHistory(this)">自分の履歴</div>
+    <div class="nav-item active" onclick="switchPage('pageDiag', this)">危険指数判定</div>
+    <div class="nav-item" onclick="switchPage('pageDiary', this)">日記を登録</div>
+    <div class="nav-item" onclick="loadHistory(this)">日記の投稿履歴</div>
     <div class="nav-item" onclick="logout()" style="color:#ef4444;">ログアウト</div>
 </div>
 
@@ -134,7 +134,7 @@
             let html = `<div style="background:rgba(56, 189, 248, 0.1); padding:14px; border-radius:16px; margin:12px 0; font-size:1rem; font-weight:bold; border:1px solid rgba(56,189,248,0.3); color:white;">${data.alertTitle}</div>`;
             
             if(data.localInsights?.length > 0) {
-                html += `<div class="tag">🚨 先人たちの要注意報告</div>`;
+                html += `<div class="tag">🚨 先人たちからの特記事項</div>`;
                 data.localInsights.forEach(i => {
                     const cssClass = i.type === 'local' ? 'local-info' : 'general-info';
                     html += `<div class="insight-box ${cssClass}">
@@ -167,7 +167,7 @@
         if(d.some(v => !v)) return alert("未入力があります");
         document.getElementById('loader').style.display = 'flex';
         await fetch(`${gasUrl}?mode=postDiary&place=${encodeURIComponent(d[1])}&topic=${encodeURIComponent(d[2])}&content=${encodeURIComponent(d[3])}&campDate=${encodeURIComponent(d[0])}&uid=${encodeURIComponent(uid)}`, {mode: 'no-cors'});
-        alert("教訓を共有しました！");
+        alert("お疲れ様でした。次回も楽しんで！");
         switchPage('pageDiag', document.querySelectorAll('.nav-item')[0]);
         document.getElementById('loader').style.display = 'none';
     }
