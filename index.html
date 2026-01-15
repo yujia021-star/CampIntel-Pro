@@ -11,11 +11,8 @@
         .container { max-width: 480px; margin: 0 auto; padding: 15px; }
         .page { display: none; animation: fadeIn 0.3s ease; } .active { display: block; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        /* 🔒 ログイン・リセット画面 */
         #loginOverlay { position: fixed; inset: 0; background: var(--bg); z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 20px; }
         .login-card { background: var(--card); width: 100%; max-width: 350px; padding: 30px; border-radius: 28px; border: 1px solid rgba(255,255,255,0.1); text-align: center; }
-        
         .main-card { background: var(--card); border-radius: 28px; padding: 20px; text-align: center; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.08); }
         .gauge-outer { position: relative; height: 160px; }
         .score-display { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; }
@@ -39,7 +36,7 @@
 
 <div id="loginOverlay">
     <div class="login-card" id="cardLogin">
-        <h2 style="margin-bottom:20px;">CAMPGUARD<br><span style="color:var(--accent); font-size:0.8rem;">AUTHENTICATION</span></h2>
+        <h2 style="margin-bottom:20px;">CAMPGUARD</h2>
         <input type="text" id="uid" placeholder="ユーザーID">
         <input type="password" id="pwd" placeholder="パスワード">
         <label style="font-size:0.8rem; display:block; margin-bottom:20px; text-align:left; opacity:0.7;">
@@ -49,18 +46,18 @@
         <p onclick="toggleReset(true)" style="font-size:0.7rem; margin-top:15px; cursor:pointer; color:var(--accent);">パスワードを忘れた場合</p>
     </div>
     <div class="login-card" id="cardReset" style="display:none;">
-        <h2 style="margin-bottom:20px;">PASSWORD<br><span style="color:var(--warning); font-size:0.8rem;">RESET SERVICE</span></h2>
+        <h2 style="margin-bottom:20px;">RESET</h2>
         <input type="text" id="r_uid" placeholder="ユーザーID">
-        <input type="text" id="r_ans" placeholder="秘密の回答（例：好きな食べ物）">
+        <input type="text" id="r_ans" placeholder="秘密の回答">
         <input type="password" id="r_newPwd" placeholder="新しいパスワード">
-        <button class="btn-primary" style="background:var(--warning);" onclick="attemptReset()">パスワードを更新</button>
-        <p onclick="toggleReset(false)" style="font-size:0.7rem; margin-top:15px; cursor:pointer;">ログインに戻る</p>
+        <button class="btn-primary" style="background:var(--warning);" onclick="attemptReset()">更新</button>
+        <p onclick="toggleReset(false)" style="font-size:0.7rem; margin-top:15px; cursor:pointer;">戻る</p>
     </div>
 </div>
 
 <div class="container" id="mainApp" style="display:none;">
     <div id="pageDiag" class="page active">
-        <h2 style="text-align:center; letter-spacing:1px;">CAMPGUARD <span style="color:var(--accent)">EXPERT</span></h2>
+        <h2 style="text-align:center;">CAMPGUARD <span style="color:var(--accent)">EXPERT</span></h2>
         <div style="display:flex; gap:8px; margin-bottom:20px;">
             <input type="text" id="loc" placeholder="キャンプ場名" value="ふもとっぱら" style="margin:0;">
             <button class="btn-primary" onclick="diagnose()" style="width:80px; padding:0;">診断</button>
@@ -77,26 +74,26 @@
     </div>
 
     <div id="pageDiary" class="page">
-        <h2 style="text-align:center;">Share Wisdom</h2>
+        <h2 style="text-align:center;">Write Diary</h2>
         <div class="main-card" style="text-align:left;">
             <div class="tag" style="margin-top:0;">📅 実施日</div>
-            <input type="date" id="dDate" style="margin-bottom:15px;">
-            <input type="text" id="dPlace" placeholder="📍 キャンプ場名" style="margin-bottom:12px;">
-            <input type="text" id="dTopic" placeholder="🏷️ 教訓のタイトル" style="margin-bottom:12px;">
-            <textarea id="dContent" placeholder="✍️ 具体的な知恵（例：夜に騒ぐ人がいたので耳栓必須、など）" style="height:150px;"></textarea>
-            <button class="btn-primary" onclick="saveDiary()">知恵を公開する</button>
+            <input type="date" id="dDate">
+            <input type="text" id="dPlace" placeholder="📍 キャンプ場名">
+            <input type="text" id="dTopic" placeholder="🏷️ タイトル">
+            <textarea id="dContent" placeholder="✍️ キャンプの感想や気づいたこと（例：トイレが少し遠かった、など）" style="height:150px;"></textarea>
+            <button class="btn-primary" onclick="saveDiary()">日記を公開する</button>
         </div>
     </div>
 
     <div id="pageHistory" class="page">
-        <h2 style="text-align:center;">Activity Log</h2>
+        <h2 style="text-align:center;">My Activity Log</h2>
         <div id="historyList"></div>
     </div>
 </div>
 
 <div class="nav" id="mainNav" style="display:none;">
     <div class="nav-item active" onclick="switchPage('pageDiag', this)">診断</div>
-    <div class="nav-item" onclick="switchPage('pageDiary', this)">日記</div>
+    <div class="nav-item" onclick="switchPage('pageDiary', this)">日記を書く</div>
     <div class="nav-item" onclick="loadHistory(this)">履歴</div>
     <div class="nav-item" onclick="logout()" style="color:#ef4444;">ログアウト</div>
 </div>
@@ -105,31 +102,18 @@
     const gasUrl = "https://script.google.com/macros/s/AKfycbyqDTFt6HyyWfDLJJTkB2hQfSik9oJJfmIJBsRZ4U_kacbxYjlE2lB759s7scGMhaHx/exec";
     let myChart;
 
-    window.onload = () => {
-        const savedUser = localStorage.getItem('campGuardUser');
-        if (savedUser) showApp();
-    };
-
-    function showApp() {
-        document.getElementById('loginOverlay').style.display = 'none';
-        document.getElementById('mainApp').style.display = 'block';
-        document.getElementById('mainNav').style.display = 'flex';
-    }
-
-    function toggleReset(isReset) {
-        document.getElementById('cardLogin').style.display = isReset ? 'none' : 'block';
-        document.getElementById('cardReset').style.display = isReset ? 'block' : 'none';
-    }
+    window.onload = () => { if (localStorage.getItem('campGuardUser')) showApp(); };
+    function showApp() { document.getElementById('loginOverlay').style.display = 'none'; document.getElementById('mainApp').style.display = 'block'; document.getElementById('mainNav').style.display = 'flex'; }
+    function toggleReset(isReset) { document.getElementById('cardLogin').style.display = isReset ? 'none' : 'block'; document.getElementById('cardReset').style.display = isReset ? 'block' : 'none'; }
 
     async function attemptLogin() {
         const uid = document.getElementById('uid').value;
         const pwd = document.getElementById('pwd').value;
-        const keep = document.getElementById('keepLogin').checked;
-        if(!uid || !pwd) return alert("入力してください");
+        if(!uid || !pwd) return;
         document.getElementById('loader').style.display = 'flex';
         const res = await fetch(`${gasUrl}?mode=login&uid=${uid}&pwd=${pwd}`);
         if (await res.text() === "success") {
-            if (keep) localStorage.setItem('campGuardUser', uid);
+            if (document.getElementById('keepLogin').checked) localStorage.setItem('campGuardUser', uid);
             sessionStorage.setItem('activeUser', uid);
             showApp();
         } else alert("認証失敗");
@@ -140,18 +124,13 @@
         const uid = document.getElementById('r_uid').value;
         const ans = document.getElementById('r_ans').value;
         const newPwd = document.getElementById('r_newPwd').value;
-        if(!uid || !ans || !newPwd) return alert("全て入力してください");
         document.getElementById('loader').style.display = 'flex';
         const res = await fetch(`${gasUrl}?mode=reset&uid=${uid}&ans=${ans}&newPwd=${newPwd}`);
-        if (await res.text() === "success") {
-            alert("更新完了。ログインしてください。");
-            toggleReset(false);
-        } else alert("IDまたは回答が違います");
+        if (await res.text() === "success") { alert("完了"); toggleReset(false); } else alert("不可");
         document.getElementById('loader').style.display = 'none';
     }
 
     function logout() { localStorage.removeItem('campGuardUser'); location.reload(); }
-
     function switchPage(id, el) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById(id).classList.add('active');
@@ -170,12 +149,12 @@
             updateGauge(data.score);
             let html = `<div style="font-size:0.75rem; opacity:0.6; margin-bottom:10px;">${data.scoreReason}</div>
                         <div style="background:rgba(56, 189, 248, 0.1); padding:14px; border-radius:16px; margin:12px 0; font-size:0.95rem; font-weight:bold; border:1px solid rgba(56,189,248,0.3); color:white;">${data.alertTitle}</div>`;
-            if(data.localInsights && data.localInsights.length > 0) {
-                html += `<div class="tag" style="margin-top:28px; color:var(--warning);">🔑 現場ナレッジ（教訓）</div>`;
+            if(data.localInsights?.length > 0) {
+                html += `<div class="tag" style="margin-top:28px; color:var(--warning);">🔑 先人たちの日記</div>`;
                 data.localInsights.forEach(i => {
-                    html += `<div class="bubble" style="border-left-color:var(--warning); background:rgba(245,158,11,0.06); margin-bottom:10px;">
+                    html += `<div class="bubble" style="border-left-color:var(--warning); background:rgba(245,158,11,0.06);">
                                 <div style="font-size:0.75rem; color:var(--warning); margin-bottom:5px;">📌 ${i.topic} <span style="float:right;">${i.date}</span></div>
-                                <div style="font-size:1rem; font-weight:bold; color:#fff;">「${i.content}」</div>
+                                <div style="font-size:1rem; font-weight:bold;">「${i.content}」</div>
                              </div>`;
                 });
             }
@@ -183,7 +162,7 @@
                      <div class="detail-grid"><div>風速<br><b>${data.maxWind}</b>m/s</div><div>最高<br><b>${data.maxTemp}</b>℃</div><div>最低<br><b>${data.minTemp}</b>℃</div><div>雨量<br><b>${data.maxRain}</b>mm</div></div>`;
             document.getElementById('insightContainer').innerHTML = html;
             document.getElementById('resTimeline').innerHTML = data.timeline.map(t => `<div class="t-item"><div style="font-size:0.6rem; color:var(--accent);">${t.time}</div><img src="https://openweathermap.org/img/wn/${t.icon}.png" width="30"><div>${t.temp}℃</div></div>`).join('');
-        } catch(e) { alert("失敗"); }
+        } catch(e) { alert("エラー"); }
         document.getElementById('loader').style.display = 'none';
     }
 
@@ -199,12 +178,9 @@
         const uid = localStorage.getItem('campGuardUser') || sessionStorage.getItem('activeUser');
         if(d.some(v => !v)) return alert("未入力");
         document.getElementById('loader').style.display = 'flex';
-        try {
-            await fetch(`${gasUrl}?mode=postDiary&place=${encodeURIComponent(d[1])}&topic=${encodeURIComponent(d[2])}&content=${encodeURIComponent(d[3])}&campDate=${encodeURIComponent(d[0])}&uid=${encodeURIComponent(uid)}`, {mode: 'no-cors'});
-            alert("保存完了！");
-            document.getElementById('dTopic').value = ""; document.getElementById('dContent').value = "";
-            switchPage('pageDiag', document.querySelectorAll('.nav-item')[0]);
-        } catch(e) { alert("失敗"); }
+        await fetch(`${gasUrl}?mode=postDiary&place=${encodeURIComponent(d[1])}&topic=${encodeURIComponent(d[2])}&content=${encodeURIComponent(d[3])}&campDate=${encodeURIComponent(d[0])}&uid=${encodeURIComponent(uid)}`, {mode: 'no-cors'});
+        alert("保存完了！");
+        switchPage('pageDiag', document.querySelectorAll('.nav-item')[0]);
         document.getElementById('loader').style.display = 'none';
     }
 
@@ -212,11 +188,10 @@
         switchPage('pageHistory', el);
         const list = document.getElementById('historyList');
         list.innerHTML = "読込中...";
-        try {
-            const res = await fetch(`${gasUrl}?mode=getDiaries`);
-            const data = await res.json();
-            list.innerHTML = data.length ? data.map(d => `<div class="main-card" style="text-align:left;"><div style="color:var(--accent); font-size:0.75rem;">🗓️ ${d.campDate} @${d.place} by ${d.author}</div><div style="font-weight:bold; margin:8px 0;">${d.topic}</div><div style="opacity:0.8; font-size:0.9rem; white-space:pre-wrap;">${d.content}</div></div>`).join('') : "なし";
-        } catch(e) { alert("失敗"); }
+        const uid = localStorage.getItem('campGuardUser') || sessionStorage.getItem('activeUser');
+        const res = await fetch(`${gasUrl}?mode=getDiaries&uid=${encodeURIComponent(uid)}`);
+        const data = await res.json();
+        list.innerHTML = data.length ? data.map(d => `<div class="main-card" style="text-align:left;"><div style="color:var(--accent); font-size:0.75rem;">🗓️ ${d.campDate} @${d.place}</div><div style="font-weight:bold; margin:8px 0;">${d.topic}</div><div style="opacity:0.8; font-size:0.9rem; white-space:pre-wrap;">${d.content}</div></div>`).join('') : "日記はありません";
     }
 </script>
 </body>
