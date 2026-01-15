@@ -34,7 +34,7 @@
 </head>
 <body>
 
-<div id="loader" class="loading">解析中...</div>
+<div id="loader" class="loading">全ユーザーの知恵を解析中...</div>
 
 <div id="loginOverlay">
     <div class="login-card" id="cardLogin">
@@ -64,13 +64,13 @@
     </div>
 
     <div id="pageDiary" class="page">
-        <h2 style="text-align:center;">Write Diary</h2>
+        <h2 style="text-align:center;">Share Wisdom</h2>
         <div class="main-card" style="text-align:left;">
             <input type="date" id="dDate">
             <input type="text" id="dPlace" placeholder="📍 キャンプ場名">
-            <input type="text" id="dTopic" placeholder="🏷️ タイトル（例：強風で苦労した話）">
-            <textarea id="dContent" placeholder="今回のキャンプで「困った・大変だった・嫌だった」ことはありますか？その経験が誰かの助けになります。" style="height:150px;"></textarea>
-            <button class="btn-primary" onclick="saveDiary()">日記を保存して教訓を共有</button>
+            <input type="text" id="dTopic" placeholder="🏷️ タイトル">
+            <textarea id="dContent" placeholder="苦労したことや、マナー面での困りごと（騒音など）、地面の状態などを記録してください。他のキャンパーを助ける知恵になります。" style="height:150px;"></textarea>
+            <button class="btn-primary" onclick="saveDiary()">知恵を公開する</button>
         </div>
     </div>
 
@@ -83,7 +83,7 @@
 <div class="nav" id="mainNav" style="display:none;">
     <div class="nav-item active" onclick="switchPage('pageDiag', this)">診断</div>
     <div class="nav-item" onclick="switchPage('pageDiary', this)">日記を書く</div>
-    <div class="nav-item" onclick="loadHistory(this)">履歴</div>
+    <div class="nav-item" onclick="loadHistory(this)">自分の履歴</div>
     <div class="nav-item" onclick="logout()" style="color:#ef4444;">ログアウト</div>
 </div>
 
@@ -125,18 +125,18 @@
                         <div style="background:rgba(56, 189, 248, 0.1); padding:14px; border-radius:16px; margin:12px 0; font-size:0.95rem; font-weight:bold; border:1px solid rgba(56,189,248,0.3); color:white;">${data.alertTitle}</div>`;
             
             if(data.localInsights?.length > 0) {
-                html += `<div class="tag">🚨 過去の教訓・要注意報告</div>`;
+                html += `<div class="tag">🚨 先人たちの要注意報告</div>`;
                 data.localInsights.forEach(i => {
                     const cssClass = i.type === 'local' ? 'local-info' : 'general-info';
                     html += `<div class="insight-box ${cssClass}">
                                 <div style="font-size:0.7rem; font-weight:bold; opacity:0.8; margin-bottom:4px;">${i.label}</div>
-                                <div style="font-weight:bold; line-height:1.4;">「${i.content}」</div>
-                                <div style="font-size:0.6rem; margin-top:6px; opacity:0.5; text-align:right;">元ネタ: ${i.originalPlace}</div>
+                                <div style="font-weight:bold; line-height:1.4;">${i.content}</div>
+                                <div style="font-size:0.6rem; margin-top:6px; opacity:0.5; text-align:right;">ソース: ${i.originalPlace}</div>
                              </div>`;
                 });
             }
 
-            html += `<div class="tag">🛡️ 予報に基づく推奨装備</div><div class="insight-box" style="background:rgba(255,255,255,0.05);">${data.checkList.map(item => `<div>✅ ${item}</div>`).join('')}</div>
+            html += `<div class="tag">🛡️ 推奨装備</div><div class="insight-box" style="background:rgba(255,255,255,0.05);">${data.checkList.map(item => `<div>✅ ${item}</div>`).join('')}</div>
                      <div class="detail-grid"><div>風速<br><b>${data.maxWind}</b>m/s</div><div>最高<br><b>${data.maxTemp}</b>℃</div><div>最低<br><b>${data.minTemp}</b>℃</div><div>雨量<br><b>${data.maxRain}</b>mm</div></div>`;
             
             document.getElementById('insightContainer').innerHTML = html;
@@ -159,7 +159,7 @@
         if(d.some(v => !v)) return alert("未入力があります");
         document.getElementById('loader').style.display = 'flex';
         await fetch(`${gasUrl}?mode=postDiary&place=${encodeURIComponent(d[1])}&topic=${encodeURIComponent(d[2])}&content=${encodeURIComponent(d[3])}&campDate=${encodeURIComponent(d[0])}&uid=${encodeURIComponent(uid)}`, {mode: 'no-cors'});
-        alert("日記を保存しました。あなたの経験が仲間の助けになります！");
+        alert("教訓を共有しました！");
         switchPage('pageDiag', document.querySelectorAll('.nav-item')[0]);
         document.getElementById('loader').style.display = 'none';
     }
