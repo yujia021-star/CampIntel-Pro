@@ -3,74 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CampGuard v13.5</title>
+    <title>CampGuard Expert</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         :root { --bg: #0b0f1a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; }
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-bottom: 90px; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-bottom: 90px; overflow-x: hidden; }
         .container { max-width: 480px; margin: 0 auto; padding: 15px; }
-        .page { display: none; } .active { display: block; }
+        .page { display: none; animation: fadeIn 0.3s ease; } .active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .main-card { background: var(--card); border-radius: 28px; padding: 20px; text-align: center; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1); }
         .gauge-outer { position: relative; height: 160px; margin-bottom: 10px; }
         .score-display { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; }
         .score-num { font-size: 5rem; font-weight: 900; line-height: 1; }
         .search-box { display: flex; gap: 8px; margin-bottom: 20px; }
-        input, textarea { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #334155; background: #0f172a; color: white; width: 100%; box-sizing: border-box; }
+        input, textarea { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #334155; background: #0f172a; color: white; width: 100%; box-sizing: border-box; font-size: 16px; }
         .btn-diag { background: var(--accent); color: #0f172a; border: none; border-radius: 12px; padding: 0 20px; font-weight: bold; cursor: pointer; }
-        .tag { font-size: 0.75rem; color: var(--accent); font-weight: bold; text-align: left; margin-top: 15px; margin-bottom: 5px; }
-        .bubble { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 15px; font-size: 0.85rem; margin-bottom: 10px; border-left: 4px solid var(--accent); text-align: left; }
-        .timeline { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; -webkit-overflow-scrolling: touch; }
-        .t-item { background: #334155; padding: 10px; border-radius: 12px; min-width: 60px; text-align: center; flex-shrink: 0; }
+        .tag { font-size: 0.75rem; color: var(--accent); font-weight: bold; text-align: left; margin-top: 20px; margin-bottom: 8px; }
+        .bubble { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 18px; font-size: 0.85rem; margin-bottom: 10px; border-left: 4px solid var(--accent); text-align: left; }
+        .timeline { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; scrollbar-width: none; }
+        .t-item { background: #334155; padding: 10px; border-radius: 12px; min-width: 65px; text-align: center; flex-shrink: 0; }
         .nav { position: fixed; bottom: 0; left: 0; right: 0; background: #1e293b; display: flex; justify-content: space-around; padding: 15px; border-top: 1px solid rgba(255,255,255,0.1); z-index: 1000; }
-        .nav-item { cursor: pointer; font-size: 0.7rem; opacity: 0.5; text-align: center; color: white; text-decoration: none; }
+        .nav-item { cursor: pointer; font-size: 0.7rem; opacity: 0.5; text-align: center; color: white; }
         .nav-item.active { opacity: 1; color: var(--accent); }
-        .loading { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 2000; font-weight: bold; }
+        .loading { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 2000; }
         .detail-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; font-size: 0.65rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; margin-top: 15px; }
-        .detail-grid b { font-size: 0.9rem; display: block; margin-top: 2px; }
     </style>
 </head>
 <body>
 
-<div id="loader" class="loading">キャンプ環境を解析中...</div>
+<div id="loader" class="loading">解析中...</div>
 
 <div class="container">
     <div id="pageDiag" class="page active">
         <h2 style="text-align:center;">CampGuard <span style="color:var(--accent)">Expert</span></h2>
         <div class="search-box">
-            <input type="text" id="loc" placeholder="キャンプ場名を入力" value="小倉橋">
+            <input type="text" id="loc" placeholder="キャンプ場名を入力" value="">
             <button class="btn-diag" onclick="diagnose()">診断</button>
         </div>
-        
         <div id="resultArea" style="display:none;">
             <div class="main-card">
-                <div id="resLoc" style="font-size:0.85rem; color:var(--accent); margin-bottom:5px; font-weight: bold;"></div>
-                <div class="gauge-outer">
-                    <canvas id="gaugeChart"></canvas>
-                    <div class="score-display">
-                        <div id="resScore" class="score-num">0</div>
-                    </div>
-                </div>
-                
+                <div id="resLoc" style="font-size:0.85rem; color:var(--accent); font-weight: bold; margin-bottom:10px;"></div>
+                <div class="gauge-outer"><canvas id="gaugeChart"></canvas><div class="score-display"><div id="resScore" class="score-num">0</div></div></div>
                 <div id="insightContainer"></div>
             </div>
-
-            <div class="tag">🕒 3時間ごとの予報（当日〜翌日）</div>
+            <div class="tag">🕒 予報（当日〜翌日）</div>
             <div id="resTimeline" class="timeline"></div>
         </div>
     </div>
 
     <div id="pageDiary" class="page">
-        <h2 style="text-align:center;">My Diary</h2>
-        <div class="main-card">
-            <input type="text" id="dPlace" placeholder="キャンプ場の名前">
-            <input type="text" id="dTopic" placeholder="タイトル（例：冬の防寒対策）" style="margin:12px 0;">
-            <textarea id="dContent" placeholder="気づいたことや、持って行って良かった装備などをメモしましょう。天候データは自動で紐付けられます。" style="height:150px;"></textarea>
-            <button onclick="saveDiary()" style="width:100%; padding:15px; margin-top:15px; background:var(--accent); border:none; border-radius:12px; font-weight:bold; color:#0f172a; cursor:pointer;">日記を保存する</button>
+        <h2 style="text-align:center;">Write Diary</h2>
+        <div class="main-card" style="text-align:left;">
+            <div class="tag" style="margin-top:0;">📅 キャンプ日</div>
+            <input type="date" id="dDate" style="margin-bottom:15px;">
+            <div class="tag">📍 キャンプ場</div>
+            <input type="text" id="dPlace" placeholder="例：小倉橋">
+            <div class="tag">🏷️ タイトル</div>
+            <input type="text" id="dTopic" placeholder="例：風対策の記録">
+            <div class="tag">✍️ 内容</div>
+            <textarea id="dContent" placeholder="気づいたこと、必要な装備など" style="height:120px;"></textarea>
+            <button onclick="saveDiary()" style="width:100%; padding:15px; margin-top:20px; background:var(--accent); border:none; border-radius:12px; font-weight:bold; color:#0f172a;">保存する</button>
         </div>
     </div>
 
     <div id="pageHistory" class="page">
-        <h2 style="text-align:center;">Activity Log</h2>
+        <h2 style="text-align:center;">History</h2>
         <div id="historyList"></div>
     </div>
 </div>
@@ -82,7 +79,6 @@
 </div>
 
 <script>
-    // 【重要】ここに新しいデプロイURLを貼り付けてください
     const gasUrl = "https://script.google.com/macros/s/AKfycbyqDTFt6HyyWfDLJJTkB2hQfSik9oJJfmIJBsRZ4U_kacbxYjlE2lB759s7scGMhaHx/exec"; 
     let myChart;
 
@@ -91,127 +87,82 @@
         document.getElementById(id).classList.add('active');
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         el.classList.add('active');
-        window.scrollTo(0, 0);
     }
 
     async function diagnose() {
-        const loader = document.getElementById('loader');
-        loader.style.display = 'flex';
+        document.getElementById('loader').style.display = 'flex';
         try {
-            const response = await fetch(`${gasUrl}?mode=diagnose&place=${encodeURIComponent(document.getElementById('loc').value)}`);
-            const data = await response.json();
-            
-            if(data.error) throw new Error(data.error);
-
+            const res = await fetch(`${gasUrl}?mode=diagnose&place=${encodeURIComponent(document.getElementById('loc').value)}`);
+            const data = await res.json();
             document.getElementById('resultArea').style.display = 'block';
             document.getElementById('resLoc').innerText = data.locationName;
             document.getElementById('resScore').innerText = data.score;
             updateGauge(data.score);
 
-            // UIの組み立て
             let html = `
                 <div style="font-size:0.7rem; opacity:0.7; margin-bottom:8px;">${data.scoreReason}</div>
-                <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:12px; margin:10px 0; font-size:0.9rem; font-weight:bold; border: 1px solid rgba(56, 189, 248, 0.2);">
-                    ${data.alertTitle}
-                </div>
+                <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:12px; margin:10px 0; font-size:0.9rem; font-weight:bold; border:1px solid rgba(56,189,248,0.2);">${data.alertTitle}</div>
                 <div style="text-align:left; margin-top:20px;">
                     <div class="tag">🛡️ 推奨装備チェック</div>
-                    <div class="bubble" style="line-height:2;">
-                        ${data.checkList.map(item => `<div style="display:flex; align-items:center;"><span style="color:#10b981; margin-right:8px;">✅</span>${item}</div>`).join('')}
-                    </div>
+                    <div class="bubble">${data.checkList.map(item => `<div>✅ ${item}</div>`).join('')}</div>
                 </div>
                 <div class="detail-grid">
-                    <div>最大風速<br><b>${data.maxWind}</b>m/s</div>
-                    <div>最高気温<br><b>${data.maxTemp}</b>℃</div>
-                    <div>最低気温<br><b>${data.minTemp}</b>℃</div>
-                    <div>最大雨量<br><b>${data.maxRain}</b>mm</div>
+                    <div>最大風速<br><b>${data.maxWind}</b>m/s</div><div>最高気温<br><b>${data.maxTemp}</b>℃</div><div>最低気温<br><b>${data.minTemp}</b>℃</div><div>最大雨量<br><b>${data.maxRain}</b>mm</div>
                 </div>
             `;
 
-            // 過去の知恵（日記）の追加表示
             if(data.localInsights && data.localInsights.length > 0) {
-                html += `<div class="tag" style="margin-top:25px;">📍 この場所の知恵</div>`;
-                data.localInsights.forEach(i => {
-                    html += `<div class="bubble"><b>${i.topic}</b><br><span style="opacity:0.9; font-size:0.8rem;">${i.content}</span></div>`;
-                });
+                html += `<div class="tag" style="text-align:left; margin-top:25px;">📍 あなたの知恵（日記より）</div>`;
+                data.localInsights.forEach(i => html += `<div class="bubble"><b>${i.topic}</b><br>${i.content}</div>`);
             }
 
             document.getElementById('insightContainer').innerHTML = html;
-
-            // タイムライン描画（当日〜翌日）
             document.getElementById('resTimeline').innerHTML = data.timeline.map(t => `
-                <div class="t-item">
-                    <div style="font-size:0.6rem; color:var(--accent); font-weight:bold;">${t.time}</div>
-                    <img src="https://openweathermap.org/img/wn/${t.icon}.png" width="35">
-                    <div style="font-weight:bold;">${t.temp}℃</div>
-                </div>
+                <div class="t-item"><div style="font-size:0.6rem; color:var(--accent);">${t.time}</div><img src="https://openweathermap.org/img/wn/${t.icon}.png" width="30"><div>${t.temp}℃</div></div>
             `).join('');
-
-        } catch(e) { 
-            console.error(e);
-            alert("診断に失敗しました。URLの設定やネット接続を確認してください。"); 
-        }
-        loader.style.display = 'none';
+        } catch(e) { alert("診断失敗"); }
+        document.getElementById('loader').style.display = 'none';
     }
 
     function updateGauge(score) {
         const ctx = document.getElementById('gaugeChart').getContext('2d');
         const color = score >= 70 ? '#ef4444' : (score >= 40 ? '#f59e0b' : '#10b981');
         if (myChart) myChart.destroy();
-        myChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                datasets: [{
-                    data: [score, 100 - score],
-                    backgroundColor: [color, 'rgba(255,255,255,0.05)'],
-                    borderWidth: 0,
-                    circumference: 180,
-                    rotation: 270,
-                    cutout: '88%'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false }, tooltip: { enabled: false } }
-            }
-        });
+        myChart = new Chart(ctx, { type: 'doughnut', data: { datasets: [{ data: [score, 100 - score], backgroundColor: [color, 'rgba(255,255,255,0.05)'], borderWidth: 0, circumference: 180, rotation: 270, cutout: '88%' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } } });
     }
 
     async function saveDiary() {
-        const p = document.getElementById('dPlace').value;
-        const t = document.getElementById('dTopic').value;
-        const c = document.getElementById('dContent').value;
-        if(!p || !t || !c) return alert("すべての項目を入力してください");
+        const date = document.getElementById('dDate').value;
+        const place = document.getElementById('dPlace').value;
+        const topic = document.getElementById('dTopic').value;
+        const content = document.getElementById('dContent').value;
+        if(!date || !place || !topic || !content) return alert("全て入力してください");
         
         document.getElementById('loader').style.display = 'flex';
         try {
-            const url = `${gasUrl}?mode=postDiary&place=${encodeURIComponent(p)}&topic=${encodeURIComponent(t)}&content=${encodeURIComponent(c)}`;
+            const url = `${gasUrl}?mode=postDiary&place=${encodeURIComponent(place)}&topic=${encodeURIComponent(topic)}&content=${encodeURIComponent(content)}&campDate=${encodeURIComponent(date)}`;
             await fetch(url, {mode: 'no-cors'});
-            alert("日記を保存しました！");
-            document.getElementById('dTopic').value = "";
-            document.getElementById('dContent').value = "";
-        } catch(e) { alert("保存に失敗しました"); }
+            alert("保存しました！");
+            document.getElementById('dTopic').value = ""; document.getElementById('dContent').value = "";
+        } catch(e) { alert("保存失敗"); }
         document.getElementById('loader').style.display = 'none';
     }
 
     async function loadHistory(el) {
         switchPage('pageHistory', el);
-        document.getElementById('loader').style.display = 'flex';
+        const list = document.getElementById('historyList');
+        list.innerHTML = "読み込み中...";
         try {
             const res = await fetch(`${gasUrl}?mode=getDiaries`);
             const data = await res.json();
-            document.getElementById('historyList').innerHTML = data.map(d => `
+            list.innerHTML = data.length ? data.map(d => `
                 <div class="main-card" style="text-align:left;">
-                    <div style="color:var(--accent); font-size:0.75rem; font-weight:bold;">
-                        ${new Date(d.date).toLocaleDateString()} @${d.place} (${Math.round(d.temp)}℃)
-                    </div>
-                    <div style="font-weight:bold; margin:8px 0; font-size:1.05rem;">${d.topic}</div>
-                    <div style="opacity:0.85; font-size:0.9rem; line-height:1.5;">${d.content}</div>
+                    <div style="color:var(--accent); font-size:0.7rem; font-weight:bold;">📅 ${d.campDate} @${d.place}</div>
+                    <div style="font-weight:bold; margin:8px 0;">${d.topic}</div>
+                    <div style="opacity:0.8; font-size:0.85rem; line-height:1.4;">${d.content}</div>
                 </div>
-            `).join('');
-        } catch(e) { alert("履歴の読み込みに失敗しました"); }
-        document.getElementById('loader').style.display = 'none';
+            `).join('') : "履歴がありません。";
+        } catch(e) { alert("履歴読み込み失敗"); }
     }
 </script>
 </body>
