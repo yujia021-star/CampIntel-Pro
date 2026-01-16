@@ -204,26 +204,76 @@ const regionMap = {
         document.getElementById('loader').style.display = 'none';
     }
 
-    async function loadHazardMap() {
-        const area = document.getElementById('hArea').value;
-        const date = document.getElementById('hDate').value;
-        if(!date) return alert("開始日時を選択してください");
-        document.getElementById('loader').style.display = 'flex';
-        try {
-            const res = await fetch(`${gasUrl}?mode=areaHazard&area=${encodeURIComponent(area)}&date=${encodeURIComponent(date)}`);
-            const data = await res.json();
-            let html = "";
-            data.forEach(item => {
-                const color = item.score >= 70 ? '#ef4444' : (item.score >= 40 ? '#f59e0b' : '#10b981');
-                html += `<div class="main-card" style="border-left:8px solid ${color}; text-align:left;">
-                    <div style="display:flex; justify-content:space-between;"><b>${item.name}</b><b style="color:${color}">${item.score}点</b></div>
-                    <div style="font-size:0.7rem; opacity:0.7;">${item.reason} | 風:${item.maxWind}m/s 最小:${item.minTemp}℃</div>
-                </div>`;
+    // --- ここから loadHazardMap 関数を丸ごと上書き ---
+async function loadHazardMap() {
+    const area = document.getElementById('hArea').value;
+    const date = document.getElementById('hDate').value;
+    const listDiv = document.getElementById('hazardList');
+    
+    listDiv.innerHTML = '<div class="loader">現在地を計算し、近い順にスキャン中...</div>';
+
+    // 1. 現在地を取得する関数
+    const getPos = () => new Promise(res => navigator.geolocation.getCurrentPosition(res, () => res(null)));
+    const pos = await getPos();
+
+    google.script.run.withSuccessHandler(function(results) {
+        if (!results || results.length === 0) {
+            listDiv.innerHTML = '<p>データが見つかりませんでした。</p>';
+            return;
+        }
+
+        // 2. 現在地からの距離で並び替え
+        if (pos) {
+            results.forEach(pt => {
+                // masterシートに緯度経度(lat, lon)がある前提
+                pt.dist = Math.sqrt(Math.pow(pt.lat - pos.coords.latitude, 2) + Math.pow(pt.lon - pos.coords.longitude, 2));
             });
-            document.getElementById('hazardList').innerHTML = html || "データなし";
-        } catch(e) { alert("通信エラー"); }
-        document.getElementById('loader').style.display = 'none';
-    }
+            results.sort((a, b) => (a.dist || 0) - (b.dist || 0));
+        }
+
+        listDiv.innerHTML = ''; // リセット
+
+        results.forEach(res => {
+            // スコアによる色（現状維持）
+            const color = res.score >= 80 ? '#27ae60' : res.score >= 50 ? '#f39c12' : '#e74c3c';
+            
+            // 3. キャンプ道具と動物のアドバイス（仮定のデータ、後でGAS側でシートから取るようにします）
+            const gear = res.wind >= 4 ? "🚩30cm以上の鍛造ペグ推奨" : "🔨標準ペグでOK";
+            const animal = res.animal || "食料の管理に注意";
+
+            const card = `
+                <div class="main-card" style="border-left: 8px solid ${color}; margin-bottom:15px; padding:15px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="margin:0;">${res.name}</h3>
+                        <span style="font-size:24px; font-weight:bold; color:${color}">${res.score}点</span>
+                    </div>
+                    <p style="font-size:12px; color:#666; margin:5px 0;">💨風速:${res.maxWind}m / 🌡最低:${res.minTemp}℃</p>
+                    <p style="font-size:13px; margin:5px 0;"><strong>理由:</strong> ${res.reason}</p>
+                    
+                    <div style="background:#f9f9f9; padding:10px; border-radius:5px; font-size:12px; margin-top:10px;">
+                        <div>🛠 <strong>装備:</strong> ${gear}</div>
+                        <div>🐻 <strong>動物:</strong> ${animal}</div>
+                        <div style="color:#d35400; margin-top:5px;">💡 <strong>Hack:</strong> ${getCampHack(res)}</div>
+                    </div>
+
+                    <button class="btn-primary" style="margin-top:10px; background:#4285F4;" 
+                        onclick="window.open('https://www.google.com/maps/search/' + encodeURIComponent('${res.name} キャンプ場'))">
+                        📍 このエリアをMapで探す
+                    </button>
+                </div>
+            `;
+            listDiv.innerHTML += card;
+        });
+    }).areaHazard({area: area, date: date});
+}
+
+// 豆知識を出す補助関数（loadHazardMapの外に置いてください）
+function getCampHack(res) {
+    if (res.minTemp <= 5) return "底冷えします。マットを2重に！";
+    if (res.maxWind >= 5) return "焚き火は控えるか、陣幕を使いましょう。";
+    return "撤収前にテントの底を乾かすと楽ですよ。";
+}
+// --- 上書きここまで ---
 
     function updateGauge(score) {
         const ctx = document.getElementById('gaugeChart').getContext('2d');
