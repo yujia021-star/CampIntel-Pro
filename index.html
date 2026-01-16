@@ -214,73 +214,67 @@ async function loadHazardMap() {
     const listDiv = document.getElementById('hazardList');
     
     if (!area) {
-        alert("地方または都道府県を選択してください");
+        alert("エリアを選択してください");
         return;
     }
 
-    listDiv.innerHTML = '<div style="color:white; text-align:center; padding:20px;">現在地を計算し、近い順にスキャン中...</div>';
+    listDiv.innerHTML = '<div style="color:white; text-align:center; padding:20px;">スキャン中...</div>';
 
-    // 1. 位置情報取得
+    // 1. 位置情報取得（距離計算のため）
     const getPos = () => new Promise(res => {
         navigator.geolocation.getCurrentPosition(res, () => res(null), {timeout: 5000});
     });
     const pos = await getPos();
 
-    // 2. GASの実行
-    google.script.run
-        .withSuccessHandler(function(results) {
-            if (!results || results.length === 0) {
-                listDiv.innerHTML = '<p style="color:white; text-align:center;">地点データが見つかりませんでした。</p>';
-                return;
-            }
+    try {
+        // 2. ★ここが重要！GitHubからGASへ外線をかける処理
+        // gasUrlの末尾にパラメータをつけて情報を送ります
+        const requestUrl = `${gasUrl}?mode=areaHazard&area=${encodeURIComponent(area)}`;
+        
+        const response = await fetch(requestUrl);
+        const results = await response.json(); // GASからデータが届くのを待つ
 
-            try {
-                // 3. 距離計算（エラーが出やすい場所を保護）
-                if (pos) {
-                    results.forEach(pt => {
-                        const lat1 = pos.coords.latitude;
-                        const lon1 = pos.coords.longitude;
-                        const lat2 = parseFloat(pt.lat);
-                        const lon2 = parseFloat(pt.lon);
-                        
-                        if (!isNaN(lat2) && !isNaN(lon2)) {
-                            // 簡易的な距離計算
-                            pt.dist = Math.sqrt(Math.pow(lat2 - lat1, 2) + Math.pow(lon2 - lon1, 2));
-                        } else {
-                            pt.dist = 999; 
-                        }
-                    });
-                    results.sort((a, b) => (a.dist || 0) - (b.dist || 0));
-                }
+        if (!results || results.length === 0) {
+            listDiv.innerHTML = '<p style="text-align:center;">地点データが見つかりませんでした。</p>';
+            return;
+        }
 
-                listDiv.innerHTML = ''; // クリア
+        // 3. 距離計算（現在地に近い順に並べる）
+        if (pos) {
+            results.forEach(pt => {
+                const lat1 = pos.coords.latitude;
+                const lon1 = pos.coords.longitude;
+                const lat2 = parseFloat(pt.lat);
+                const lon2 = parseFloat(pt.lon);
+                pt.dist = Math.sqrt(Math.pow(lat2 - lat1, 2) + Math.pow(lon2 - lon1, 2));
+            });
+            results.sort((a, b) => (a.dist || 0) - (b.dist || 0));
+        }
 
-                results.forEach(res => {
-                    const color = res.score >= 80 ? '#27ae60' : res.score >= 50 ? '#f39c12' : '#e74c3c';
-                    const card = `
-                        <div style="background:rgba(255,255,255,0.05); border-left:8px solid ${color}; padding:15px; border-radius:18px; margin-bottom:15px; color:white;">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span style="font-weight:bold; font-size:1.1rem;">${res.name}</span>
-                                <span style="font-size:1.4rem; font-weight:bold; color:${color}">${res.score}点</span>
-                            </div>
-                            <p style="font-size:0.8rem; margin:5px 0; opacity:0.7;">💨風:${res.maxWind}m / 🌡最低:${res.minTemp}℃</p>
-                            <p style="font-size:0.85rem;"><strong>理由:</strong> ${res.reason}</p>
-                            <div style="background:rgba(0,0,0,0.3); padding:12px; border-radius:12px; font-size:0.75rem; margin-top:10px;">
-                                <div>🛠 <strong>装備:</strong> ${res.ground || '標準ペグでOK'}</div>
-                                <div>🐻 <strong>動物:</strong> ${res.animal || '食料管理注意'}</div>
-                            </div>
-                            <button onclick="window.open('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('${res.name} キャンプ場'))" 
-                                style="width:100%; margin-top:12px; padding:10px; background:#4285F4; border:none; border-radius:12px; color:white; font-weight:bold; cursor:pointer;">
-                                📍 Mapで周辺を探す
-                            </button>
-                        </div>
-                    `;
-                    listDiv.innerHTML += card;
-                });
-            } catch (err) {
-                listDiv.innerHTML = '<div style="color:red;">表示エラーが発生しました: ' + err.message + '</div>';
-            }
-        })
+        // 4. 画面にリストを表示
+        listDiv.innerHTML = ''; 
+        results.forEach(res => {
+            const color = res.score >= 80 ? '#27ae60' : res.score >= 50 ? '#f39c12' : '#e74c3c';
+            const card = `
+                <div style="background:rgba(255,255,255,0.05); border-left:8px solid ${color}; padding:15px; border-radius:18px; margin-bottom:15px; color:white;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-weight:bold;">${res.name}</span>
+                        <span style="font-weight:bold; color:${color}">${res.score}点</span>
+                    </div>
+                    <p style="font-size:0.8rem; margin:5px 0; opacity:0.7;">💨風:${res.maxWind}m / 🌡最低:${res.minTemp}℃</p>
+                    <p style="font-size:0.85rem;"><strong>理由:</strong> ${res.reason}</p>
+                    <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:10px; font-size:0.75rem; margin-top:10px;">
+                        🛠 地面: ${res.ground || '標準'} / 🐻 動物: ${res.animal || '注意'}
+                    </div>
+                </div>
+            `;
+            listDiv.innerHTML += card;
+        });
+    } catch (err) {
+        listDiv.innerHTML = '<div style="color:red; text-align:center;">通信エラーが発生しました</div>';
+        console.error(err);
+    }
+})
         .withFailureHandler(function(err) {
             listDiv.innerHTML = '<div style="color:red;">GAS実行エラー: ' + err.message + '</div>';
         })
