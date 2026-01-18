@@ -1,44 +1,44 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CampIntel Pro</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <style>
-        :root { --bg: #0b0f1a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --warning: #ef4444; --general: #10b981; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-bottom: 90px; }
-        .container { max-width: 480px; margin: 0 auto; padding: 15px; }
-        .page { display: none; animation: fadeIn 0.3s ease; } .active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        
-        /* 右上固定ログアウトボタン */
-        .logout-top { 
-            position: fixed; top: 15px; right: 15px; z-index: 2000; 
-            background: rgba(239, 68, 68, 0.15); color: #ef4444; 
-            border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px; 
-            padding: 6px 12px; font-size: 0.7rem; font-weight: bold; cursor: pointer;
-            backdrop-filter: blur(4px); display: none;
-        }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CampIntel Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root { --bg: #0b0f1a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --warning: #ef4444; --general: #10b981; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-bottom: 90px; }
+        .container { max-width: 480px; margin: 0 auto; padding: 15px; }
+        .page { display: none; animation: fadeIn 0.3s ease; } .active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* 右上固定ログアウトボタン */
+        .logout-top { 
+            position: fixed; top: 15px; right: 15px; z-index: 2000; 
+            background: rgba(239, 68, 68, 0.15); color: #ef4444; 
+            border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px; 
+            padding: 6px 12px; font-size: 0.7rem; font-weight: bold; cursor: pointer;
+            backdrop-filter: blur(4px); display: none;
+        }
 
-        #loginOverlay { position: fixed; inset: 0; background: var(--bg); z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .login-card { background: var(--card); width: 100%; max-width: 350px; padding: 30px; border-radius: 28px; border: 1px solid rgba(255,255,255,0.1); text-align: center; }
-        .main-card { background: var(--card); border-radius: 28px; padding: 20px; text-align: center; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.08); }
-        .gauge-outer { position: relative; height: 160px; margin-bottom: 10px; }
-        .score-display { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; }
-        .score-num { font-size: 5rem; font-weight: 900; line-height: 1; }
-        input, textarea, select { width: 100%; padding: 14px; border-radius: 14px; border: 1px solid #334155; background: #0f172a; color: white; margin-bottom: 12px; outline: none; box-sizing: border-box; font-size: 16px; }
-        .btn-primary { background: var(--accent); color: #0f172a; border: none; border-radius: 14px; padding: 14px; font-weight: bold; width: 100%; cursor: pointer; }
-        .tag { font-size: 0.75rem; color: var(--accent); font-weight: bold; text-align: left; margin-top: 20px; margin-bottom: 8px; text-transform: uppercase; }
-        .insight-box { padding: 16px; border-radius: 20px; font-size: 0.95rem; margin-bottom: 12px; text-align: left; }
-        .local-info { border-left: 4px solid var(--warning); background: rgba(239, 68, 68, 0.08); }
-        .nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(30, 41, 59, 0.95); display: flex; justify-content: space-around; padding: 15px 0 25px 0; border-top: 1px solid rgba(255,255,255,0.1); z-index: 1000; }
-        .nav-item { cursor: pointer; font-size: 0.65rem; opacity: 0.4; color: white; text-align: center; flex: 1; }
-        .nav-item.active { opacity: 1; color: var(--accent); }
-        .loading { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 4000; }
-        .timeline { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; }
-        .t-item { background: #334155; padding: 10px; border-radius: 12px; min-width: 65px; text-align: center; }
-    </style>
+        #loginOverlay { position: fixed; inset: 0; background: var(--bg); z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .login-card { background: var(--card); width: 100%; max-width: 350px; padding: 30px; border-radius: 28px; border: 1px solid rgba(255,255,255,0.1); text-align: center; }
+        .main-card { background: var(--card); border-radius: 28px; padding: 20px; text-align: center; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.08); }
+        .gauge-outer { position: relative; height: 160px; margin-bottom: 10px; }
+        .score-display { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; }
+        .score-num { font-size: 5rem; font-weight: 900; line-height: 1; }
+        input, textarea, select { width: 100%; padding: 14px; border-radius: 14px; border: 1px solid #334155; background: #0f172a; color: white; margin-bottom: 12px; outline: none; box-sizing: border-box; font-size: 16px; }
+        .btn-primary { background: var(--accent); color: #0f172a; border: none; border-radius: 14px; padding: 14px; font-weight: bold; width: 100%; cursor: pointer; }
+        .tag { font-size: 0.75rem; color: var(--accent); font-weight: bold; text-align: left; margin-top: 20px; margin-bottom: 8px; text-transform: uppercase; }
+        .insight-box { padding: 16px; border-radius: 20px; font-size: 0.95rem; margin-bottom: 12px; text-align: left; }
+        .local-info { border-left: 4px solid var(--warning); background: rgba(239, 68, 68, 0.08); }
+        .nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(30, 41, 59, 0.95); display: flex; justify-content: space-around; padding: 15px 0 25px 0; border-top: 1px solid rgba(255,255,255,0.1); z-index: 1000; }
+        .nav-item { cursor: pointer; font-size: 0.65rem; opacity: 0.4; color: white; text-align: center; flex: 1; }
+        .nav-item.active { opacity: 1; color: var(--accent); }
+        .loading { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 4000; }
+        .timeline { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; }
+        .t-item { background: #334155; padding: 10px; border-radius: 12px; min-width: 65px; text-align: center; }
+    </style>
 </head>
 <body>
 
@@ -47,256 +47,256 @@
 <div id="logoutBtn" class="logout-top" onclick="logout()">LOGOUT</div>
 
 <div id="loginOverlay">
-    <div class="login-card">
-        <h2>CampIntel Pro</h2>
-        <input type="text" id="uid" placeholder="ユーザーID">
-        <input type="password" id="pwd" placeholder="パスワード">
-        <button class="btn-primary" onclick="attemptLogin()">ログイン</button>
-    </div>
+    <div class="login-card">
+        <h2>CampIntel Pro</h2>
+        <input type="text" id="uid" placeholder="ユーザーID">
+        <input type="password" id="pwd" placeholder="パスワード">
+        <button class="btn-primary" onclick="attemptLogin()">ログイン</button>
+    </div>
 </div>
 
 <div class="container" id="mainApp" style="display:none;">
-    <div id="pageDiag" class="page active">
-        <h2 style="text-align:center;">CAMPINTEL <span style="color:var(--accent)">PRO</span></h2>
-        <div style="display:flex; gap:8px; margin-bottom:20px;">
-            <input type="text" id="loc" placeholder="キャンプ場名" style="margin:0;">
-            <button class="btn-primary" onclick="diagnose()" style="width:80px; padding:0;">判定</button>
-        </div>
-        <div id="resultArea" style="display:none;">
-            <div class="main-card">
-                <div id="resLoc" style="font-size:0.9rem; color:var(--accent); font-weight: bold;"></div>
-                <div class="gauge-outer">
-                    <canvas id="gaugeChart"></canvas>
-                    <div class="score-display">
-                        <div id="resScore" class="score-num">0</div>
-                        <div id="resReason" style="font-size:0.75rem; opacity:0.6;"></div>
-                    </div>
-                </div>
-                <div id="insightContainer"></div>
-            </div>
-            <div id="resTimeline" class="timeline"></div>
-        </div>
-    </div>
+    <div id="pageDiag" class="page active">
+        <h2 style="text-align:center;">CAMPINTEL <span style="color:var(--accent)">PRO</span></h2>
+        <div style="display:flex; gap:8px; margin-bottom:20px;">
+            <input type="text" id="loc" placeholder="キャンプ場名" style="margin:0;">
+            <button class="btn-primary" onclick="diagnose()" style="width:80px; padding:0;">判定</button>
+        </div>
+        <div id="resultArea" style="display:none;">
+            <div class="main-card">
+                <div id="resLoc" style="font-size:0.9rem; color:var(--accent); font-weight: bold;"></div>
+                <div class="gauge-outer">
+                    <canvas id="gaugeChart"></canvas>
+                    <div class="score-display">
+                        <div id="resScore" class="score-num">0</div>
+                        <div id="resReason" style="font-size:0.75rem; opacity:0.6;"></div>
+                    </div>
+                </div>
+                <div id="insightContainer"></div>
+            </div>
+            <div id="resTimeline" class="timeline"></div>
+        </div>
+    </div>
 
 <div id="pageHazard" class="page">
-        <h2 style="text-align:center;">AREA <span style="color:var(--accent)">HAZARD</span></h2>
-        <div class="main-card">
-            <input type="datetime-local" id="hDate">
-            
-            <select id="hRegion" onchange="updatePrefectures()">
-                <option value="" disabled selected>タップして地方を選択</option>
-                <option value="北海道">北海道</option>
-                <option value="東北">東北</option>
-                <option value="北関東">北関東</option>
-                <option value="南関東">南関東</option>
-                <option value="甲信越">甲信越</option>
-                <option value="北陸">北陸</option>
-                <option value="東海">東海</option>
-                <option value="近畿">近畿</option>
-                <option value="中国">中国</option>
-                <option value="四国">四国</option>
-                <option value="九州・沖縄">九州・沖縄</option>
-            </select>
+        <h2 style="text-align:center;">AREA <span style="color:var(--accent)">HAZARD</span></h2>
+        <div class="main-card">
+            <input type="datetime-local" id="hDate">
+            
+            <select id="hRegion" onchange="updatePrefectures()">
+                <option value="" disabled selected>タップして地方を選択</option>
+                <option value="北海道">北海道</option>
+                <option value="東北">東北</option>
+                <option value="北関東">北関東</option>
+                <option value="南関東">南関東</option>
+                <option value="甲信越">甲信越</option>
+                <option value="北陸">北陸</option>
+                <option value="東海">東海</option>
+                <option value="近畿">近畿</option>
+                <option value="中国">中国</option>
+                <option value="四国">四国</option>
+                <option value="九州・沖縄">九州・沖縄</option>
+            </select>
 
-            <select id="hArea">
-                <option value="">↑地方を先に選択してください</option>
-            </select>
+            <select id="hArea">
+                <option value="">↑地方を先に選択してください</option>
+            </select>
 
-            <button class="btn-primary" onclick="loadHazardMap()">36時間リスクをスキャン</button>
-        </div>
-        <div id="hazardList"></div>
-    </div>
+            <button class="btn-primary" onclick="loadHazardMap()">36時間リスクをスキャン</button>
+        </div>
+        <div id="hazardList"></div>
+    </div>
 
-    <div id="pageDiary" class="page">
-        <h2 style="text-align:center;">日記を記録</h2>
-        <div class="main-card" style="text-align:left;">
-            <input type="date" id="dDate">
-            <input type="text" id="dPlace" placeholder="📍 キャンプ場名">
-            <input type="text" id="dTopic" placeholder="🏷️ タイトル">
-            <textarea id="dContent" placeholder="内容..."></textarea>
-            <button class="btn-primary" onclick="saveDiary()">登録</button>
-        </div>
-    </div>
+    <div id="pageDiary" class="page">
+        <h2 style="text-align:center;">日記を記録</h2>
+        <div class="main-card" style="text-align:left;">
+            <input type="date" id="dDate">
+            <input type="text" id="dPlace" placeholder="📍 キャンプ場名">
+            <input type="text" id="dTopic" placeholder="🏷️ タイトル">
+            <textarea id="dContent" placeholder="内容..."></textarea>
+            <button class="btn-primary" onclick="saveDiary()">登録</button>
+        </div>
+    </div>
 
-    <div id="pageHistory" class="page">
-        <h2 style="text-align:center;">履歴</h2>
-        <div id="historyList"></div>
-    </div>
+    <div id="pageHistory" class="page">
+        <h2 style="text-align:center;">履歴</h2>
+        <div id="historyList"></div>
+    </div>
 </div>
 
 <div class="nav" id="mainNav" style="display:none;">
-    <div class="nav-item active" onclick="switchPage('pageDiag', this)">危険判定</div>
-    <div class="nav-item" onclick="switchPage('pageHazard', this)">ハザード</div>
-    <div class="nav-item" onclick="switchPage('pageDiary', this)">日記登録</div>
-    <div class="nav-item" onclick="loadHistory(this)">履歴</div>
+    <div class="nav-item active" onclick="switchPage('pageDiag', this)">危険判定</div>
+    <div class="nav-item" onclick="switchPage('pageHazard', this)">ハザード</div>
+    <div class="nav-item" onclick="switchPage('pageDiary', this)">日記登録</div>
+    <div class="nav-item" onclick="loadHistory(this)">履歴</div>
 </div>
 
 <script>
-    const gasUrl = "https://script.google.com/macros/s/AKfycbxTXEtRztOBX5a0F3UgFbwCBtHglu-Ynqz3qeGUoEK8YTFyX4SlGiwbeMegloMWhMoX/exec";
-    let myChart;
+    const gasUrl = "https://script.google.com/macros/s/AKfycbxTXEtRztOBX5a0F3UgFbwCBtHglu-Ynqz3qeGUoEK8YTFyX4SlGiwbeMegloMWhMoX/exec";
+    let myChart;
 
-    window.onload = function() {
-        if (localStorage.getItem('campGuardUser')) showApp();
-    };
+    window.onload = function() {
+        if (localStorage.getItem('campGuardUser')) showApp();
+    };
 
-    const regionMap = {
-        "北海道": ["北海道"], "東北": ["青森", "岩手", "宮城", "秋田", "山形", "福島"],
-        "北関東": ["茨城", "栃木", "群馬"], "南関東": ["埼玉", "千葉", "東京", "神奈川"],
-        "甲信越": ["山梨", "長野", "新潟"], "北陸": ["富山", "石川", "福井"],
-        "東海": ["岐阜", "静岡", "愛知", "三重"], "近畿": ["滋賀", "京都", "大阪", "兵庫", "奈良", "和歌山"],
-        "中国": ["鳥取", "島根", "岡山", "広島", "山口"], "四国": ["徳島", "香川", "愛媛", "高知"],
-        "九州・沖縄": ["福岡", "佐賀", "長崎", "熊本", "大分", "宮崎", "鹿児島", "沖縄"]
-    };
+    const regionMap = {
+        "北海道": ["北海道"], "東北": ["青森", "岩手", "宮城", "秋田", "山形", "福島"],
+        "北関東": ["茨城", "栃木", "群馬"], "南関東": ["埼玉", "千葉", "東京", "神奈川"],
+        "甲信越": ["山梨", "長野", "新潟"], "北陸": ["富山", "石川", "福井"],
+        "東海": ["岐阜", "静岡", "愛知", "三重"], "近畿": ["滋賀", "京都", "大阪", "兵庫", "奈良", "和歌山"],
+        "中国": ["鳥取", "島根", "岡山", "広島", "山口"], "四国": ["徳島", "香川", "愛媛", "高知"],
+        "九州・沖縄": ["福岡", "佐賀", "長崎", "熊本", "大分", "宮崎", "鹿児島", "沖縄"]
+    };
 
-    function updatePrefectures() {
-        const region = document.getElementById('hRegion').value;
-        const areaSelect = document.getElementById('hArea');
-        const prefs = regionMap[region] || [];
-        let html = `<option value="${region}">🚩 ${region}全域をスキャン</option>`;
-        prefs.forEach(p => { html += `<option value="${p}">${p}</option>`; });
-        areaSelect.innerHTML = html;
-    }
+    function updatePrefectures() {
+        const region = document.getElementById('hRegion').value;
+        const areaSelect = document.getElementById('hArea');
+        const prefs = regionMap[region] || [];
+        let html = `<option value="${region}">🚩 ${region}全域をスキャン</option>`;
+        prefs.forEach(p => { html += `<option value="${p}">${p}</option>`; });
+        areaSelect.innerHTML = html;
+    }
 
-    function showApp() { 
-        document.getElementById('loginOverlay').style.display = 'none'; 
-        document.getElementById('mainApp').style.display = 'block'; 
-        document.getElementById('mainNav').style.display = 'flex';
-        document.getElementById('logoutBtn').style.display = 'block';
-    }
+    function showApp() { 
+        document.getElementById('loginOverlay').style.display = 'none'; 
+        document.getElementById('mainApp').style.display = 'block'; 
+        document.getElementById('mainNav').style.display = 'flex';
+        document.getElementById('logoutBtn').style.display = 'block';
+    }
 
-    function logout() { localStorage.removeItem('campGuardUser'); location.reload(); }
+    function logout() { localStorage.removeItem('campGuardUser'); location.reload(); }
 
-    async function attemptLogin() {
-        const uid = document.getElementById('uid').value.trim();
-        const pwd = document.getElementById('pwd').value.trim();
-        if(!uid || !pwd) return;
-        document.getElementById('loader').style.display = 'flex';
-        try {
-            const res = await fetch(`${gasUrl}?mode=login&uid=${encodeURIComponent(uid)}&pwd=${encodeURIComponent(pwd)}`);
-            if (await res.text() === "success") { localStorage.setItem('campGuardUser', uid); showApp(); } else { alert("失敗"); }
-        } catch(e) { alert("エラー"); }
-        document.getElementById('loader').style.display = 'none';
-    }
+    async function attemptLogin() {
+        const uid = document.getElementById('uid').value.trim();
+        const pwd = document.getElementById('pwd').value.trim();
+        if(!uid || !pwd) return;
+        document.getElementById('loader').style.display = 'flex';
+        try {
+            const res = await fetch(`${gasUrl}?mode=login&uid=${encodeURIComponent(uid)}&pwd=${encodeURIComponent(pwd)}`);
+            if (await res.text() === "success") { localStorage.setItem('campGuardUser', uid); showApp(); } else { alert("失敗"); }
+        } catch(e) { alert("エラー"); }
+        document.getElementById('loader').style.display = 'none';
+    }
 
-    async function diagnose() {
-        document.getElementById('loader').style.display = 'flex';
-        try {
-            const loc = document.getElementById('loc').value;
-            const res = await fetch(`${gasUrl}?mode=diagnose&place=${encodeURIComponent(loc)}`);
-            const data = await res.json();
-            document.getElementById('resultArea').style.display = 'block';
-            document.getElementById('resLoc').innerText = data.locationName;
-            document.getElementById('resScore').innerText = data.score;
-            // 元のデザイン通り、理由だけを表示
-            document.getElementById('resReason').innerText = `(${data.scoreReason})`;
-            updateGauge(data.score);
-            let html = `<div style="background:rgba(56, 189, 248, 0.1); padding:14px; border-radius:16px; margin:12px 0; font-weight:bold; border:1px solid rgba(56,189,248,0.3);">${data.alertTitle}</div>`;
-            if(data.localInsights?.length > 0) {
-                html += `<div class="tag">🚨 先人の声</div>`;
-                data.localInsights.forEach(i => { html += `<div class="insight-box local-info"><div>${i.content}</div></div>`; });
-            }
-            html += `<div class="tag">🛡️ 推奨</div><div class="insight-box" style="background:rgba(255,255,255,0.05);">${data.checkList.map(item => `<div>✅ ${item}</div>`).join('')}</div>`;
-            document.getElementById('insightContainer').innerHTML = html;
-            
-            // 下部の気温に「💧雨」と「💨風」を元のデザインを崩さず追加
-            // --- HTMLの diagnose 関数内の resTimeline 部分を以下に差し替え ---
+    async function diagnose() {
+        document.getElementById('loader').style.display = 'flex';
+        try {
+            const loc = document.getElementById('loc').value;
+            const res = await fetch(`${gasUrl}?mode=diagnose&place=${encodeURIComponent(loc)}`);
+            const data = await res.json();
+            document.getElementById('resultArea').style.display = 'block';
+            document.getElementById('resLoc').innerText = data.locationName;
+            document.getElementById('resScore').innerText = data.score;
+            // 元のデザイン通り、理由だけを表示
+            document.getElementById('resReason').innerText = `(${data.scoreReason})`;
+            updateGauge(data.score);
+            let html = `<div style="background:rgba(56, 189, 248, 0.1); padding:14px; border-radius:16px; margin:12px 0; font-weight:bold; border:1px solid rgba(56,189,248,0.3);">${data.alertTitle}</div>`;
+            if(data.localInsights?.length > 0) {
+                html += `<div class="tag">🚨 先人の声</div>`;
+                data.localInsights.forEach(i => { html += `<div class="insight-box local-info"><div>${i.content}</div></div>`; });
+            }
+            html += `<div class="tag">🛡️ 推奨</div><div class="insight-box" style="background:rgba(255,255,255,0.05);">${data.checkList.map(item => `<div>✅ ${item}</div>`).join('')}</div>`;
+            document.getElementById('insightContainer').innerHTML = html;
+            
+            // 下部の気温に「💧雨」と「💨風」を元のデザインを崩さず追加
+            // --- HTMLの diagnose 関数内の resTimeline 部分を以下に差し替え ---
 document.getElementById('resTimeline').innerHTML = data.timeline.map(t => `
-    <div class="t-item" style="min-width:85px; padding:10px 5px; flex-shrink:0;">
-        <div style="font-size:0.75rem; opacity:0.8; margin-bottom:2px;">${t.time}</div>
-        <img src="https://openweathermap.org/img/wn/${t.icon}.png" width="35" style="margin:0 auto;">
-        <div style="font-weight:bold; font-size:1.1rem; margin-bottom:8px;">${t.temp}℃</div>
-        
-        <div style="font-size:0.7rem; text-align:left; padding-left:10px; line-height:1.4;">
-            <div style="color:#38bdf8;">☔️ ${t.rain||0}mm</div>
-            <div style="color:#a855f7;">💧 ${t.humidity}%</div>
-            <div style="color:#f59e0b;">🌬️ ${t.wind}m/s</div>
-        </div>
-    </div>`).join('');
-        } catch(e) { alert("判定エラー"); }
-        document.getElementById('loader').style.display = 'none';
-    }
+    <div class="t-item" style="min-width:85px; padding:10px 5px; flex-shrink:0;">
+        <div style="font-size:0.75rem; opacity:0.8; margin-bottom:2px;">${t.time}</div>
+        <img src="https://openweathermap.org/img/wn/${t.icon}.png" width="35" style="margin:0 auto;">
+        <div style="font-weight:bold; font-size:1.1rem; margin-bottom:8px;">${t.temp}℃</div>
+        
+        <div style="font-size:0.7rem; text-align:left; padding-left:10px; line-height:1.4;">
+            <div style="color:#38bdf8;">☔️ ${t.rain||0}mm</div>
+            <div style="color:#a855f7;">💧 ${t.humidity}%</div>
+            <div style="color:#f59e0b;">🌬️ ${t.wind}m/s</div>
+        </div>
+    </div>`).join('');
+        } catch(e) { alert("判定エラー"); }
+        document.getElementById('loader').style.display = 'none';
+    }
 
-    async function loadHazardMap() {
-        const area = document.getElementById('hArea').value;
-        const listDiv = document.getElementById('hazardList');
-        if (!area) return alert("エリアを選択してください");
-        listDiv.innerHTML = '<div style="color:white; text-align:center; padding:20px;">スキャン中...</div>';
-        const getPos = () => new Promise(res => {
-            navigator.geolocation.getCurrentPosition(res, () => res(null), {timeout: 5000});
-        });
-        const pos = await getPos();
-        try {
-            const res = await fetch(`${gasUrl}?mode=areaHazard&area=${encodeURIComponent(area)}`);
-            const results = await res.json();
-            if (!results || results.length === 0) {
-                listDiv.innerHTML = '<p style="text-align:center;">データがありません</p>';
-                return;
-            }
-            if (pos) {
-                results.forEach(pt => {
-                    pt.dist = Math.sqrt(Math.pow(pt.lat - pos.coords.latitude, 2) + Math.pow(pt.lon - pos.coords.longitude, 2));
-                });
-                results.sort((a, b) => (a.dist || 0) - (b.dist || 0));
-            }
-            listDiv.innerHTML = ''; 
-            results.forEach(res => {
-                const color = res.score >= 70 ? '#ef4444' : (res.score >= 40 ? '#f59e0b' : '#10b981');
-                listDiv.innerHTML += `
-                    <div style="background:rgba(255,255,255,0.05); border-left:8px solid ${color}; padding:15px; border-radius:18px; margin-bottom:15px; color:white;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span style="font-weight:bold;">📍 ${res.name}</span>
-                            <span style="font-weight:bold; color:${color}">${res.score}点</span>
-                        </div>
-                        <p style="font-size:0.8rem; margin:5px 0; opacity:0.7;">💨風:${res.maxWind}m / 🌡最低:${res.minTemp}℃</p>
-                        <p style="font-size:0.85rem;"><strong>理由:</strong> ${res.reason}</p>
-                        <div style="display:flex; gap:8px; margin-top:10px;">
-                            <button onclick="jumpToDiag('${res.name}')" style="flex:1; background:var(--accent); color:#0b0f1a; border:none; border-radius:10px; padding:8px; font-size:0.75rem; font-weight:bold; cursor:pointer;">詳細を解析</button>
-                            <button onclick="window.open('https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.name + ' キャンプ場')}', '_blank')" style="flex:1; background:rgba(255,255,255,0.1); color:white; border:none; border-radius:10px; padding:8px; font-size:0.75rem; cursor:pointer;">MAP</button>
-                        </div>
-                    </div>`;
-            });
-        } catch (err) { listDiv.innerHTML = '<div style="color:red; text-align:center;">エラー</div>'; }
-    }
+    async function loadHazardMap() {
+        const area = document.getElementById('hArea').value;
+        const listDiv = document.getElementById('hazardList');
+        if (!area) return alert("エリアを選択してください");
+        listDiv.innerHTML = '<div style="color:white; text-align:center; padding:20px;">スキャン中...</div>';
+        const getPos = () => new Promise(res => {
+            navigator.geolocation.getCurrentPosition(res, () => res(null), {timeout: 5000});
+        });
+        const pos = await getPos();
+        try {
+            const res = await fetch(`${gasUrl}?mode=areaHazard&area=${encodeURIComponent(area)}`);
+            const results = await res.json();
+            if (!results || results.length === 0) {
+                listDiv.innerHTML = '<p style="text-align:center;">データがありません</p>';
+                return;
+            }
+            if (pos) {
+                results.forEach(pt => {
+                    pt.dist = Math.sqrt(Math.pow(pt.lat - pos.coords.latitude, 2) + Math.pow(pt.lon - pos.coords.longitude, 2));
+                });
+                results.sort((a, b) => (a.dist || 0) - (b.dist || 0));
+            }
+            listDiv.innerHTML = ''; 
+            results.forEach(res => {
+                const color = res.score >= 70 ? '#ef4444' : (res.score >= 40 ? '#f59e0b' : '#10b981');
+                listDiv.innerHTML += `
+                    <div style="background:rgba(255,255,255,0.05); border-left:8px solid ${color}; padding:15px; border-radius:18px; margin-bottom:15px; color:white;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-weight:bold;">📍 ${res.name}</span>
+                            <span style="font-weight:bold; color:${color}">${res.score}点</span>
+                        </div>
+                        <p style="font-size:0.8rem; margin:5px 0; opacity:0.7;">💨風:${res.maxWind}m / 🌡最低:${res.minTemp}℃</p>
+                        <p style="font-size:0.85rem;"><strong>理由:</strong> ${res.reason}</p>
+                        <div style="display:flex; gap:8px; margin-top:10px;">
+                            <button onclick="jumpToDiag('${res.name}')" style="flex:1; background:var(--accent); color:#0b0f1a; border:none; border-radius:10px; padding:8px; font-size:0.75rem; font-weight:bold; cursor:pointer;">詳細を解析</button>
+                            <button onclick="window.open('https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.name + ' キャンプ場')}', '_blank')" style="flex:1; background:rgba(255,255,255,0.1); color:white; border:none; border-radius:10px; padding:8px; font-size:0.75rem; cursor:pointer;">MAP</button>
+                        </div>
+                    </div>`;
+            });
+        } catch (err) { listDiv.innerHTML = '<div style="color:red; text-align:center;">エラー</div>'; }
+    }
 
-    // 詳細ページへジャンプ用
-    function jumpToDiag(name) {
-        document.getElementById('loc').value = name;
-        switchPage('pageDiag', document.querySelectorAll('.nav-item')[0]);
-        diagnose();
-    }
+    // 詳細ページへジャンプ用
+    function jumpToDiag(name) {
+        document.getElementById('loc').value = name;
+        switchPage('pageDiag', document.querySelectorAll('.nav-item')[0]);
+        diagnose();
+    }
 
-    function updateGauge(score) {
-        const ctx = document.getElementById('gaugeChart').getContext('2d');
-        const color = score >= 70 ? '#ef4444' : (score >= 40 ? '#f59e0b' : '#10b981');
-        if (myChart) myChart.destroy();
-        myChart = new Chart(ctx, { type: 'doughnut', data: { datasets: [{ data: [score, 100 - score], backgroundColor: [color, 'rgba(255,255,255,0.05)'], circumference: 180, rotation: 270, cutout: '90%' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: false, tooltip: false } } });
-    }
+    function updateGauge(score) {
+        const ctx = document.getElementById('gaugeChart').getContext('2d');
+        const color = score >= 70 ? '#ef4444' : (score >= 40 ? '#f59e0b' : '#10b981');
+        if (myChart) myChart.destroy();
+        myChart = new Chart(ctx, { type: 'doughnut', data: { datasets: [{ data: [score, 100 - score], backgroundColor: [color, 'rgba(255,255,255,0.05)'], circumference: 180, rotation: 270, cutout: '90%' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: false, tooltip: false } } });
+    }
 
-    async function saveDiary() {
-        const d = ["dDate","dPlace","dTopic","dContent"].map(id => document.getElementById(id).value);
-        if(d.some(v => !v)) return alert("未入力");
-        document.getElementById('loader').style.display = 'flex';
-        await fetch(`${gasUrl}?mode=postDiary&place=${encodeURIComponent(d[1])}&topic=${encodeURIComponent(d[2])}&content=${encodeURIComponent(d[3])}&campDate=${encodeURIComponent(d[0])}&uid=${encodeURIComponent(localStorage.getItem('campGuardUser'))}`, {mode: 'no-cors'});
-        alert("登録完了");
-        switchPage('pageDiag', document.querySelectorAll('.nav-item')[0]);
-        document.getElementById('loader').style.display = 'none';
-    }
+    async function saveDiary() {
+        const d = ["dDate","dPlace","dTopic","dContent"].map(id => document.getElementById(id).value);
+        if(d.some(v => !v)) return alert("未入力");
+        document.getElementById('loader').style.display = 'flex';
+        await fetch(`${gasUrl}?mode=postDiary&place=${encodeURIComponent(d[1])}&topic=${encodeURIComponent(d[2])}&content=${encodeURIComponent(d[3])}&campDate=${encodeURIComponent(d[0])}&uid=${encodeURIComponent(localStorage.getItem('campGuardUser'))}`, {mode: 'no-cors'});
+        alert("登録完了");
+        switchPage('pageDiag', document.querySelectorAll('.nav-item')[0]);
+        document.getElementById('loader').style.display = 'none';
+    }
 
-    async function loadHistory(el) {
-        switchPage('pageHistory', el);
-        const list = document.getElementById('historyList');
-        list.innerHTML = "読込中...";
-        const res = await fetch(`${gasUrl}?mode=getDiaries&uid=${encodeURIComponent(localStorage.getItem('campGuardUser'))}`);
-        const data = await res.json();
-        list.innerHTML = data.map(d => `<div class="main-card" style="text-align:left;"><div style="color:var(--accent); font-size:0.7rem;">${d.campDate}</div><b>${d.topic}</b><p>${d.content}</p></div>`).join('') || "なし";
-    }
+    async function loadHistory(el) {
+        switchPage('pageHistory', el);
+        const list = document.getElementById('historyList');
+        list.innerHTML = "読込中...";
+        const res = await fetch(`${gasUrl}?mode=getDiaries&uid=${encodeURIComponent(localStorage.getItem('campGuardUser'))}`);
+        const data = await res.json();
+        list.innerHTML = data.map(d => `<div class="main-card" style="text-align:left;"><div style="color:var(--accent); font-size:0.7rem;">${d.campDate}</div><b>${d.topic}</b><p>${d.content}</p></div>`).join('') || "なし";
+    }
 
-    function switchPage(id, el) {
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        el.classList.add('active');
-    }
+    function switchPage(id, el) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        el.classList.add('active');
+    }
 </script>
 </body>
 </html>
