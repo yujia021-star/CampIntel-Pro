@@ -190,13 +190,45 @@
             // 元のデザイン通り、理由だけを表示
             document.getElementById('resReason').innerText = `(${data.scoreReason})`;
             updateGauge(data.score);
-            let html = `<div style="background:rgba(56, 189, 248, 0.1); padding:14px; border-radius:16px; margin:12px 0; font-weight:bold; border:1px solid rgba(56,189,248,0.3);">${data.alertTitle}</div>`;
+            // --- ここから上書き ---
+            // 1. ロジックの内訳（ベテラン解説）を作成
+            let logicHtml = `
+            <div class="tag">📊 リスク内訳 (ベテランの視点)</div>
+            <div style="background:rgba(255,255,255,0.05); padding:16px; border-radius:20px; font-size:0.85rem; margin-bottom:12px; border:1px solid rgba(255,255,255,0.05);">
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                    <span style="opacity:0.8;">💨 風リスク (風速×8)</span>
+                    <span style="font-weight:bold;">+${data.details.wind}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                    <span style="opacity:0.8;">☔️ 雨リスク (降水×10)</span>
+                    <span style="font-weight:bold;">+${data.details.rain}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                    <span style="opacity:0.8;">❄️ 気温リスク (氷点下重算)</span>
+                    <span style="font-weight:bold;">+${data.details.temp}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="opacity:0.8;">💧 結露リスク (氷点下×高湿)</span>
+                    <span style="font-weight:bold;">+${data.details.humid}</span>
+                </div>
+                <div style="border-top:1px solid rgba(255,255,255,0.1); margin-top:10px; padding-top:10px; text-align:right; color:var(--accent); font-weight:bold; font-size:0.9rem;">
+                    合計スコア: ${data.score}点
+                </div>
+            </div>`;
+
+            // 2. 既存のタイトルとチェックリストを作成
+            let listHtml = `<div style="background:rgba(56, 189, 248, 0.1); padding:14px; border-radius:16px; margin:12px 0; font-weight:bold; border:1px solid rgba(56,189,248,0.3); text-align:center;">${data.alertTitle}</div>`;
+            
             if(data.localInsights?.length > 0) {
-                html += `<div class="tag">🚨 先人の声</div>`;
-                data.localInsights.forEach(i => { html += `<div class="insight-box local-info"><div>${i.content}</div></div>`; });
+                listHtml += `<div class="tag">🚨 先人の声</div>`;
+                data.localInsights.forEach(i => { listHtml += `<div class="insight-box local-info"><div>${i.content}</div></div>`; });
             }
-            html += `<div class="tag">🛡️ 推奨</div><div class="insight-box" style="background:rgba(255,255,255,0.05);">${data.checkList.map(item => `<div>✅ ${item}</div>`).join('')}</div>`;
-            document.getElementById('insightContainer').innerHTML = html;
+            
+            listHtml += `<div class="tag">🛡️ 推奨</div><div class="insight-box" style="background:rgba(255,255,255,0.05);">${data.checkList.map(item => `<div>✅ ${item}</div>`).join('')}</div>`;
+
+            // 3. 内訳とリストを合体させて表示
+            document.getElementById('insightContainer').innerHTML = logicHtml + listHtml;
+            // --- ここまで上書き ---
             
             // 下部の気温に「💧雨」と「💨風」を元のデザインを崩さず追加
             // --- HTMLの diagnose 関数内の resTimeline 部分を以下に差し替え ---
