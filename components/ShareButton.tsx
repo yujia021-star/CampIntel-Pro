@@ -54,7 +54,7 @@ export function ShareButton({ planId, title }: { planId: string; title: string }
       <button type="button" className="btn btn-secondary" style={{ marginTop: 0 }} disabled={pending} onClick={share}>
         {pending ? "準備中…" : "📤 診断結果をシェア"}
       </button>
-      <p className="hint">リンクを知っている人は、ログインしなくても見られます（日記は見えません。パッキングリストの「所持」は見えます）。</p>
+      <p className="hint">リンクを知っている人は、ログインしなくても見られます（日記は見えません。持ち物のマイギアは見えます）。</p>
       {url && (
         <div className="place-selected" style={{ wordBreak: "break-all" }}>
           <a href={url} target="_blank" rel="noreferrer">
