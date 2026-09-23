@@ -1,16 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { hasAffiliate, mapsSearchUrl, nearbyCategoriesFor, reserveLinks, routeLinks, shopLinks } from "./links";
+import { hasAffiliate, nearbyCategoriesFor, nearbyRouteUrl, reserveLinks, routeLinks, shopLinks } from "./links";
 
 describe("外部リンク", () => {
   it("地図アプリの行き方リンク", () => {
     const r = routeLinks({ lat: 35.3151234, lon: 139.39, name: "柳島キャンプ場" });
     expect(r.google).toBe("https://www.google.com/maps/dir/?api=1&destination=35.31512,139.39000");
     expect(r.apple).toContain("daddr=35.31512,139.39000");
-    // 住所を検索語に入れて、今いる場所ではなく診断した場所の周りを探す
-    expect(mapsSearchUrl("日帰り温泉", { name: "柳島キャンプ場", address: "神奈川県 茅ヶ崎市" })).toBe(
-      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent("日帰り温泉 神奈川県 茅ヶ崎市")}`,
+    // 出発地は診断した場所、行き先は「種類＋住所」で近くの施設を探させる
+    const url = new URL(nearbyRouteUrl("日帰り温泉", { name: "柳島キャンプ場", address: "神奈川県 茅ヶ崎市", lat: 35.31, lon: 139.4 }));
+    expect(url.pathname).toBe("/maps/dir/");
+    expect(url.searchParams.get("origin")).toBe("35.31000,139.40000");
+    expect(url.searchParams.get("destination")).toBe("日帰り温泉 神奈川県 茅ヶ崎市");
+    expect(new URL(nearbyRouteUrl("コンビニ", { name: "ふもとっぱら", address: "", lat: 35, lon: 138 })).searchParams.get("destination")).toBe(
+      "コンビニ ふもとっぱら",
     );
-    expect(mapsSearchUrl("コンビニ", { name: "ふもとっぱら", address: "" })).toContain(encodeURIComponent("コンビニ ふもとっぱら"));
   });
 
   it("同行者で周辺施設の並びを変える（温泉・買い出し・病院は常に出す）", () => {

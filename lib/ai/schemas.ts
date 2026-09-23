@@ -22,6 +22,7 @@ export const DiagnosisOutputSchema = z.object({
       category: z.string(),
       priority: z.string(),
       gear_id: z.string().nullable(),
+      consumable: z.boolean(),
     }),
   ),
   overall_advice: z.string(),

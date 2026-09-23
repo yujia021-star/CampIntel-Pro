@@ -143,6 +143,21 @@ export interface PackingItem {
   gear_id: string | null;
   owned: boolean;
   is_base: boolean;
+  /** 使うと減る物（燃料・食料・ゴミ袋など）。持っていても毎回の補充・残量確認が要る */
+  consumable?: boolean;
+}
+
+const CONSUMABLE_WORDS =
+  /ガス缶|OD缶|CB缶|ガスカートリッジ|燃料|ホワイトガソリン|灯油|アルコール燃料|薪|炭|着火剤|固形燃料|マッチ|ゴミ袋|ごみ袋|電池|乾電池|食料|食材|飲料水|飲み水|^水|氷|ティッシュ|ウェット|トイレットペーパー|キッチンペーパー|アルミホイル|ラップ|カイロ|虫よけ|虫除け|日焼け止め|蚊取り|洗剤|調味料/;
+
+/** 名前から消耗品らしいかを判定する（AIが判定していない古い診断結果の表示用） */
+export function looksConsumable(name: string): boolean {
+  return CONSUMABLE_WORDS.test(name);
+}
+
+/** 持ち物が消耗品か（AIの判定を優先し、なければ名前から推定） */
+export function isConsumable(p: Pick<PackingItem, "item" | "consumable">): boolean {
+  return p.consumable ?? looksConsumable(p.item);
 }
 
 export interface DiagnosisResult {

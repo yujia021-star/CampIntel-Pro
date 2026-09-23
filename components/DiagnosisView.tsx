@@ -9,6 +9,7 @@ import {
   NIGHTS_ICONS,
   NIGHTS_LABELS,
   RISK_BASIS_LABELS,
+  isConsumable,
   type DiagnosisResult,
   type PackingItem,
   type Priority,
@@ -141,52 +142,82 @@ function PlaceCard({ result, siteName }: { result: DiagnosisResult; siteName: st
 
 const byPriority = (a: PackingItem, b: PackingItem) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
 
+/** 持ち物の1行。名前が長くても、チェックボックスと名前・通販リンクが崩れないようにする */
+function PackRow({ p, showShop, note, plain }: { p: PackingItem; showShop: boolean; note?: string; plain?: boolean }) {
+  return (
+    <div className="pack-row">
+      <label className="pack-label">
+        <input type="checkbox" />
+        <span className="pack-text">
+          <span className="item-name">{p.item}</span>
+          {p.priority === "must" && !plain && <span className="badge badge-must">必須</span>}
+          {p.priority === "optional" && <span className="muted pack-note">あれば</span>}
+          {note && <span className="muted pack-note">{note}</span>}
+        </span>
+      </label>
+      {showShop && (
+        <span className="shop-links">
+          {shopLinks(p.item).map((l) => (
+            <a key={l.label} href={l.url} target="_blank" rel="noreferrer sponsored">
+              {l.label}
+            </a>
+          ))}
+        </span>
+      )}
+    </div>
+  );
+}
+
 /**
- * 持ち物。「用意が必要なもの」と「マイギアから持っていくもの」に分けて、
- * それぞれ一目で分かるようにする（所持／要準備のバッジを並べない）。
+ * 持ち物。主役は「足りないギア」。消耗品は持っていても毎回の補充・残量確認が要るので別に出す。
+ * 持っている道具は出発前の荷造りチェック用なので畳んでおく。
  */
 function PackingCard({ result, affiliate }: { result: DiagnosisResult; affiliate: boolean }) {
-  const need = result.packing_list.filter((p) => !p.owned).sort(byPriority);
-  const owned = result.packing_list.filter((p) => p.owned);
+  const need = result.packing_list.filter((p) => !p.owned && !isConsumable(p)).sort(byPriority);
+  const consumables = result.packing_list
+    .filter((p) => isConsumable(p))
+    .sort((a, b) => Number(a.owned) - Number(b.owned) || byPriority(a, b));
+  const owned = result.packing_list.filter((p) => p.owned && !isConsumable(p));
   return (
     <div className="card">
-      <h2>🎒 持ち物</h2>
+      <h2>🎒 持ち物 {affiliate && (need.length > 0 || consumables.some((p) => !p.owned)) && <span className="pr-label">PR</span>}</h2>
       <p className="muted" style={{ marginTop: 0 }}>
-        今回必要な{result.total_count}件のうち、足りないのは<b>{need.length}件</b>です。
+        足りないギアは<b>{need.length}件</b>
+        {consumables.length > 0 && (
+          <>
+            、消耗品は<b>{consumables.length}件</b>（残量を確認・補充）
+          </>
+        )}
+        です。
       </p>
 
-      {need.length > 0 && (
+      {need.length > 0 ? (
         <>
-          <h3 className="pack-head">
-            🛒 用意が必要（{need.length}件）{affiliate && <span className="pr-label">PR</span>}
-          </h3>
+          <h3 className="pack-head">🛒 用意が必要なギア（{need.length}件）</h3>
           <div className="checklist">
             {need.map((p, i) => (
-              <div key={`${p.item}-${i}`} className="pack-row">
-                <label>
-                  <input type="checkbox" />
-                  <span className="item-name">{p.item}</span>
-                  {p.priority === "must" && <span className="badge badge-must">必須</span>}
-                  {p.priority === "optional" && <span className="muted pack-optional">あれば</span>}
-                </label>
-                <span className="shop-links">
-                  {shopLinks(p.item).map((l) => (
-                    <a key={l.label} href={l.url} target="_blank" rel="noreferrer sponsored">
-                      {l.label}
-                    </a>
-                  ))}
-                </span>
-              </div>
+              <PackRow key={`${p.item}-${i}`} p={p} showShop />
             ))}
           </div>
-          {affiliate && <p className="hint">通販リンクには広告（アフィリエイト）を含みます。</p>}
         </>
+      ) : (
+        <p className="pack-ok">🎉 足りないギアはありません。</p>
       )}
 
-      {need.length === 0 && <p className="pack-ok">🎉 足りないものはありません。マイギアでそろっています。</p>}
+      {consumables.length > 0 && (
+        <>
+          <h3 className="pack-head">🧻 消耗品（{consumables.length}件）</h3>
+          <div className="checklist">
+            {consumables.map((p, i) => (
+              <PackRow key={`${p.item}-${i}`} p={p} showShop={!p.owned} note={p.owned ? "手持ちあり・残量を確認" : undefined} />
+            ))}
+          </div>
+        </>
+      )}
+      {affiliate && <p className="hint">通販リンクには広告（アフィリエイト）を含みます。</p>}
 
       {owned.length > 0 && (
-        // 主役は「足りないもの」。持っているものは出発前の荷造りチェック用なので、畳んでおく
+        // 持っている道具は出発前の荷造りチェック用なので、畳んでおく
         <details className="pack-owned">
           <summary>
             <span className="pack-head">✅ マイギアから持っていく（{owned.length}件）</span>
@@ -204,11 +235,7 @@ function PackingCard({ result, affiliate }: { result: DiagnosisResult; affiliate
                 <div key={cat}>
                   <div className="checklist-cat">{CATEGORY_LABELS[cat]}</div>
                   {items.map((p, i) => (
-                    <label key={`${p.item}-${i}`}>
-                      <input type="checkbox" />
-                      <span className="item-name">{p.item}</span>
-                      {p.priority === "optional" && <span className="muted pack-optional">あれば</span>}
-                    </label>
+                    <PackRow key={`${p.item}-${i}`} p={p} showShop={false} plain />
                   ))}
                 </div>
               );
