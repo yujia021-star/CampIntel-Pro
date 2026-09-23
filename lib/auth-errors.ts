@@ -2,7 +2,8 @@
 export function loginErrorMessage(error: { code?: string; status?: number; message: string }): string {
   const code = error.code ?? "";
   if (code === "over_email_send_rate_limit" || code === "over_request_rate_limit" || error.status === 429) {
-    return "メールの送信回数が上限に達しました。しばらく（最大1時間ほど）待ってから、1回だけ送ってください。";
+    // 同じアドレスへの連続送信（約60秒）と、1時間あたりの上限の両方がここに来るので、区別できるようコードを添える
+    return `メールの送信回数が上限に達しました。しばらく待ってから、1回だけ送ってください。（${code || error.status}）`;
   }
   // Supabase 標準のメール送信は、プロジェクトのメンバーのアドレスにしか送れない
   if (code === "email_address_not_authorized") {
