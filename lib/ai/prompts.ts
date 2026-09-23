@@ -59,7 +59,8 @@ export function diarySummary(entries: DiaryWithForecast[]): string {
       ];
       // デイキャンプの眠りの質は入力していない（仮の値）ので渡さない
       if (e.nights !== 0) parts.push(`睡眠:★${e.sleep_quality}`);
-      if (e.nights != null) parts.unshift(`滞在:${NIGHTS_LABELS[e.nights]}`);
+      // 滞在を記録する前の日記は泊まり（眠りの質を聞いていた）なので1泊として扱う
+      parts.unshift(`滞在:${NIGHTS_LABELS[e.nights ?? 1]}`);
       const f = e.forecast;
       if (f && (f.temp_min !== null || f.temp_max !== null)) {
         parts.push(
