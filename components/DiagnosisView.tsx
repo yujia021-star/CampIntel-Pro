@@ -68,6 +68,11 @@ function PlaceCard({ result }: { result: DiagnosisResult }) {
         <div style={{ marginBottom: 8 }}>
           <b>{loc.name}</b>
           <div className="muted">{loc.address}</div>
+          {loc.auto && (
+            <div className="hint" style={{ color: "var(--amber)" }}>
+              場所を選ばずに診断したため、名前から自動で選んだ場所です。違う場合は「場所を検索」で候補から選び直してください。
+            </div>
+          )}
           <a href={`https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lon}`} target="_blank" rel="noreferrer">
             🗺️ 地図で確認
           </a>

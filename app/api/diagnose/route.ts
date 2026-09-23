@@ -4,7 +4,7 @@ import { buildDiagnosisPrompt, DIAGNOSIS_SYSTEM } from "@/lib/ai/prompts";
 import { DiagnosisOutputSchema } from "@/lib/ai/schemas";
 import { finalizeDiagnosis } from "@/lib/diagnosis";
 import type { DiaryEntry, Gear, PlaceRef } from "@/lib/domain";
-import { fetchElevation } from "@/lib/geo/places";
+import { bestPlace, fetchElevation } from "@/lib/geo/places";
 import { getUser } from "@/lib/supabase/server";
 import { parseDiagnoseInput } from "@/lib/validation/plan";
 import { fetchForecast, type ForecastResult } from "@/lib/weather/forecast";
@@ -25,15 +25,17 @@ export async function POST(request: Request) {
   try {
     await enforceRateLimit(supabase, user.id, "diagnose");
 
-    // 場所を選んでいれば、標高と天気予報をサーバー側で取り直す（クライアントの表示値は信用しない）
-    const place = parsed.place;
+    // 場所を選んでいれば、標高と天気予報をサーバー側で取り直す（クライアントの表示値は信用しない）。
+    // 選ばずに診断した場合も、名前からいちばん当てはまる場所を自動で選んで予報を使う。
+    const found = parsed.place ? null : await bestPlace(plan.campsite);
+    const place = parsed.place ?? (found && { name: found.name, address: found.address, lat: found.lat, lon: found.lon });
     const [gearsRes, diaryRes, elevation, weather] = await Promise.all([
       supabase.from("gears").select("*").order("created_at"),
       supabase.from("diary_entries").select("*").order("date", { ascending: false }).limit(DIARY_LIMIT),
       place ? fetchElevation(place.lat, place.lon) : Promise.resolve(null),
       place ? fetchForecast(place.lat, place.lon, plan.planned_date) : Promise.resolve<ForecastResult | null>(null),
     ]);
-    const location: PlaceRef | null = place ? { ...place, elevation_m: elevation } : null;
+    const location: PlaceRef | null = place ? { ...place, elevation_m: elevation, auto: Boolean(found) } : null;
     if (plan.elevation_m === null && elevation !== null) plan.elevation_m = elevation;
     if (weather?.available) {
       plan.expected_low_c ??= weather.forecast.stay.temp_min;

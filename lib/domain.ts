@@ -121,6 +121,8 @@ export interface PlaceRef {
   lon: number;
   /** 国土地理院の標高（取得できたとき） */
   elevation_m: number | null;
+  /** 場所を選ばずに診断したため、名前から自動で選んだ場所か */
+  auto?: boolean;
 }
 
 export interface PackingItem {
