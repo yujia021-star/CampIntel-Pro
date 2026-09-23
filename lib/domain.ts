@@ -11,11 +11,11 @@ export const CATEGORIES = [
 export type Category = (typeof CATEGORIES)[number];
 
 export const CATEGORY_LABELS: Record<Category, string> = {
-  shelter_and_sleep: "🏕️ シェルター・寝具",
-  fire_and_cooking: "🔥 火器・調理",
-  clothing: "🧥 衣類",
-  safety_and_tools: "🧰 安全・ツール",
-  optional_comfort_items: "🪑 快適アイテム",
+  shelter_and_sleep: "⛺ テント・寝具",
+  fire_and_cooking: "🔥 焚き火・調理",
+  clothing: "🧥 服装・防寒",
+  safety_and_tools: "🛠️ 安全・工具",
+  optional_comfort_items: "☕ 快適装備",
   other: "📦 その他",
 };
 
@@ -84,8 +84,7 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
 };
 
 export interface Risk {
-  title: string;
-  detail: string;
+  risk: string;
   severity: number; // 1〜5
 }
 
@@ -93,7 +92,6 @@ export interface PackingItem {
   item: string;
   category: Category;
   priority: Priority;
-  reason: string;
   /** 所持ギアのID。所持していなければ null（＝要準備） */
   gear_id: string | null;
   owned: boolean;

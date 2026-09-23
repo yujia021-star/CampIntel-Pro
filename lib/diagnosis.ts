@@ -11,14 +11,13 @@ import { normalizeTags } from "@/lib/tags";
 
 /** AIが返す生の診断結果（lib/ai/schemas.ts の DiagnosisOutputSchema と同形） */
 export interface RawDiagnosis {
-  environment_risks: { title: string; detail: string; severity: number }[];
-  bio_site_risks: { title: string; detail: string; severity: number }[];
+  environment_risks: { risk: string; severity: number }[];
+  bio_site_risks: { risk: string; severity: number }[];
   recommended_tags: string[];
   packing_list: {
     item: string;
     category: string;
     priority: string;
-    reason: string;
     gear_id: string | null;
   }[];
   overall_advice: string;
@@ -32,26 +31,59 @@ function clampSeverity(n: number): number {
 }
 
 function cleanRisk(r: RawDiagnosis["environment_risks"][number]): Risk {
-  return { title: r.title.trim(), detail: r.detail.trim(), severity: clampSeverity(r.severity) };
+  return { risk: r.risk.trim(), severity: clampSeverity(r.severity) };
 }
 
-/** 全リスクの severity 平均（小数1桁）。リスクがなければ 1。 */
+/** 全リスクの severity 平均（小数1桁）。リスクがなければ 0。 */
 export function computeRiskLevel(risks: Risk[]): number {
-  if (risks.length === 0) return 1;
+  if (risks.length === 0) return 0;
   const avg = risks.reduce((s, r) => s + r.severity, 0) / risks.length;
   return Math.round(avg * 10) / 10;
 }
 
+export type Tone = "ok" | "low" | "mid" | "high";
+
 export interface RiskVerdict {
-  label: "問題なし" | "軽度の注意" | "要注意" | "警戒";
-  tone: "ok" | "low" | "mid" | "high";
+  title: string;
+  text: string;
+  tone: Tone;
 }
 
+// 目安: 〜2未満=問題なし / 2〜3=軽度の注意 / 3〜4=要注意 / 4以上=警戒
 export function riskVerdict(level: number): RiskVerdict {
-  if (level < 1.75) return { label: "問題なし", tone: "ok" };
-  if (level < 2.75) return { label: "軽度の注意", tone: "low" };
-  if (level < 3.75) return { label: "要注意", tone: "mid" };
-  return { label: "警戒", tone: "high" };
+  if (level < 2)
+    return { title: "✅ 問題なし", tone: "ok", text: "特筆すべきリスクはありません。通常の準備で対応できるレベルです。" };
+  if (level < 3)
+    return {
+      title: "🟡 軽度の注意",
+      tone: "low",
+      text: "軽度の注意が必要です。下記の推奨ギアを揃えておけば安心して楽しめます。",
+    };
+  if (level < 4)
+    return {
+      title: "🟠 要注意",
+      tone: "mid",
+      text: "しっかりとした対策が必要なレベルです。装備を万全にし、行動計画にも余裕を持たせましょう。",
+    };
+  return {
+    title: "🔴 警戒",
+    tone: "high",
+    text: "重大なリスクがあります。対策が難しい場合は、日程の変更や中止も検討してください。",
+  };
+}
+
+/** リスクレベル（平均）の色分け: 4以上=赤 / 2.5以上=黄 / それ未満=緑 */
+export function riskLevelTone(level: number): Tone {
+  if (level >= 4) return "high";
+  if (level >= 2.5) return "low";
+  return "ok";
+}
+
+/** 個々のリスクの深刻度ラベル */
+export function severityLabel(severity: number): { label: string; tone: Tone } {
+  if (severity >= 4) return { label: "重大", tone: "high" };
+  if (severity === 3) return { label: "中程度", tone: "low" };
+  return { label: "軽微", tone: "ok" };
 }
 
 /**
@@ -87,7 +119,6 @@ export function finalizeDiagnosis(raw: RawDiagnosis, gears: Gear[], diaryCountUs
       item: gear?.name ?? name,
       category,
       priority,
-      reason: p.reason.trim(),
       gear_id: gear?.id ?? null,
       owned: Boolean(gear),
       is_base: Boolean(gear?.is_base),
@@ -100,7 +131,6 @@ export function finalizeDiagnosis(raw: RawDiagnosis, gears: Gear[], diaryCountUs
         item: g.name,
         category: g.category,
         priority: "must",
-        reason: "定番装備として毎回持っていくギア",
         gear_id: g.id,
         owned: true,
         is_base: true,
@@ -121,7 +151,7 @@ export function finalizeDiagnosis(raw: RawDiagnosis, gears: Gear[], diaryCountUs
     packing_list: packing,
     overall_advice: raw.overall_advice.trim(),
     risk_level: computeRiskLevel([...environment_risks, ...bio_site_risks]),
-    readiness_pct: total_count === 0 ? 0 : Math.round((owned_count / total_count) * 100),
+    readiness_pct: total_count === 0 ? 100 : Math.round((owned_count / total_count) * 100),
     owned_count,
     total_count,
     diary_count_used: diaryCountUsed,

@@ -4,9 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const ITEMS = [
-  { href: "/", icon: "🧭", label: "プラン診断" },
+  { href: "/", icon: "📋", label: "プラン診断" },
   { href: "/gear", icon: "🎒", label: "マイギア" },
-  { href: "/diary", icon: "📓", label: "日記" },
+  { href: "/diary", icon: "📔", label: "日記" },
   { href: "/history", icon: "🗂️", label: "履歴" },
 ];
 

@@ -28,7 +28,9 @@ export default async function HistoryPage() {
             </div>
             {p.result && verdict && (
               <div style={{ textAlign: "right", flexShrink: 0 }}>
-                <span className={`badge tone-${verdict.tone}`}>{verdict.label}</span>
+                <span className={`badge tone-${verdict.tone}`} style={{ background: "var(--tone-bg)", color: "var(--tone)" }}>
+                  {verdict.title}
+                </span>
                 <div className="muted">準備度 {p.result.readiness_pct}%</div>
               </div>
             )}

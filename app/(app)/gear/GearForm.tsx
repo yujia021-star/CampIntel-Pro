@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { ActionResult, GearInput } from "@/lib/actions/gear";
 import { CATEGORIES, CATEGORY_LABELS, type Category } from "@/lib/domain";
 import { resizeImageToBase64 } from "@/lib/image";
 import { parseTagInput } from "@/lib/tags";
 
 const SUGGEST_DEBOUNCE_MS = 700;
+const SUGGEST_MIN_LENGTH = 2;
+
+const joinTags = (tags: string[]) => tags.join(", ");
 
 interface Props {
   initial?: { name: string; tags: string[]; category: Category; is_base: boolean };
@@ -19,7 +22,7 @@ interface Props {
 
 export function GearForm({ initial, submitLabel, onSubmit, onCancel, enableAi = false }: Props) {
   const [name, setName] = useState(initial?.name ?? "");
-  const [tagText, setTagText] = useState(initial?.tags.map((t) => `#${t}`).join(" ") ?? "");
+  const [tagText, setTagText] = useState(initial ? joinTags(initial.tags) : "");
   const [category, setCategory] = useState<Category>(initial?.category ?? "other");
   const [isBase, setIsBase] = useState(initial?.is_base ?? false);
   const [status, setStatus] = useState<string | null>(null);
@@ -36,17 +39,18 @@ export function GearForm({ initial, submitLabel, onSubmit, onCancel, enableAi = 
   // 写真認識で名前を入れた直後は、その名前で再提案しない
   const skipSuggestFor = useRef<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const uid = useId();
 
   useEffect(() => {
     if (!enableAi) return;
     const trimmed = name.trim();
-    if (!trimmed || trimmed === skipSuggestFor.current) return;
+    if (trimmed.length < SUGGEST_MIN_LENGTH || trimmed === skipSuggestFor.current) return;
     if (tagsEdited.current && categoryEdited.current) return;
 
     const seq = ++requestSeq.current;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
-      setStatus("AIがタグを提案中…");
+      setStatus("タグとカテゴリを提案中...");
       try {
         const res = await fetch("/api/gear/suggest", {
           method: "POST",
@@ -60,9 +64,13 @@ export function GearForm({ initial, submitLabel, onSubmit, onCancel, enableAi = 
           setStatus(json?.message ?? null);
           return;
         }
-        if (!tagsEdited.current) setTagText((json.tags as string[]).map((t) => `#${t}`).join(" "));
+        if (!tagsEdited.current) setTagText(joinTags(json.tags));
         if (!categoryEdited.current) setCategory(json.category);
-        setStatus("✨ AIの提案を反映しました（編集できます）");
+        setStatus(
+          tagsEdited.current || categoryEdited.current
+            ? "AIが提案しました（手動編集した項目はそのままにしています）"
+            : "AIが提案しました（編集できます）",
+        );
       } catch (e) {
         if ((e as Error).name !== "AbortError" && seq === requestSeq.current) setStatus(null);
       }
@@ -77,7 +85,7 @@ export function GearForm({ initial, submitLabel, onSubmit, onCancel, enableAi = 
   async function onPhoto(file: File) {
     setRecognizing(true);
     setError(null);
-    setStatus("写真からギアを認識中…");
+    setStatus("写真を解析中...");
     const seq = ++requestSeq.current;
     try {
       const image = await resizeImageToBase64(file);
@@ -90,22 +98,22 @@ export function GearForm({ initial, submitLabel, onSubmit, onCancel, enableAi = 
       if (seq !== requestSeq.current) return;
       if (!res.ok || !json) {
         setStatus(null);
-        setError(json?.message ?? "写真の認識に失敗しました");
+        setError(json?.message ?? "写真の解析に失敗しました。時間をおいて再試行してください。");
         return;
       }
       if (!json.recognized) {
         setStatus(null);
-        setError("キャンプギアを認識できませんでした。別の写真を試すか、名前を入力してください。");
+        setError("この画像は認識できませんでした。別の写真を試してください。");
         return;
       }
       // 写真認識は明示的な操作なので全項目を反映する（手動編集フラグもリセット）
       skipSuggestFor.current = json.name;
       setName(json.name);
-      setTagText((json.tags as string[]).map((t) => `#${t}`).join(" "));
+      setTagText(joinTags(json.tags));
       setCategory(json.category);
       tagsEdited.current = false;
       categoryEdited.current = false;
-      setStatus("📷 写真から認識しました（編集できます）");
+      setStatus("写真から入力しました。内容を確認して「＋ ギアを追加」を押してください。");
     } catch {
       setStatus(null);
       setError("写真を読み込めませんでした");
@@ -135,87 +143,83 @@ export function GearForm({ initial, submitLabel, onSubmit, onCancel, enableAi = 
       setTagText("");
       setCategory("other");
       setIsBase(false);
-      setStatus("登録しました");
+      setStatus(null);
     }
   }
 
   return (
     <form onSubmit={submit}>
-      <div className="field">
-        <label htmlFor="gear-name">ギア名</label>
-        <div className="row" style={{ alignItems: "center" }}>
-          <input
-            id="gear-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={100}
-            required
-            placeholder="例: モンベル ダウンハガー#3"
-          />
-          {enableAi && (
-            <>
-              <button
-                type="button"
-                className="btn btn-ghost"
-                style={{ flex: "0 0 auto" }}
-                disabled={recognizing}
-                onClick={() => fileInput.current?.click()}
-                aria-label="写真から登録"
-              >
-                📷
-              </button>
-              <input
-                ref={fileInput}
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void onPhoto(f);
-                }}
-              />
-            </>
-          )}
-        </div>
-      </div>
-      <div className="field">
-        <label htmlFor="gear-tags">タグ（スペース区切り）</label>
-        <input
-          id="gear-tags"
-          value={tagText}
-          onChange={(e) => {
-            tagsEdited.current = true;
-            setTagText(e.target.value);
-          }}
-          placeholder="#防寒 #冬用"
-        />
-      </div>
-      <div className="field">
-        <label htmlFor="gear-category">カテゴリ</label>
-        <select
-          id="gear-category"
-          value={category}
-          onChange={(e) => {
-            categoryEdited.current = true;
-            setCategory(e.target.value as Category);
-          }}
-        >
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {CATEGORY_LABELS[c]}
-            </option>
-          ))}
-        </select>
-      </div>
-      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.9rem", color: "var(--text)", marginBottom: 12 }}>
-        <input type="checkbox" checked={isBase} onChange={(e) => setIsBase(e.target.checked)} style={{ width: "auto" }} />
-        定番装備（毎回のパッキングリストに必ず含める）
+      <label htmlFor={`${uid}-name`} style={{ marginTop: 0 }}>
+        ギア名
       </label>
-      {status && <p className="muted">{status}</p>}
-      {error && <p className="error">{error}</p>}
+      <input
+        id={`${uid}-name`}
+        value={name}
+        onChange={(e) => {
+          setName(e.target.value);
+          if (e.target.value.trim().length < SUGGEST_MIN_LENGTH) setStatus(null);
+        }}
+        maxLength={100}
+        required
+        placeholder="例: モンベル ダウンハガー800"
+      />
+      {enableAi && (
+        <>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            style={{ marginTop: 6 }}
+            disabled={recognizing}
+            onClick={() => fileInput.current?.click()}
+          >
+            📷 写真から入力
+          </button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void onPhoto(f);
+            }}
+          />
+        </>
+      )}
+      <label htmlFor={`${uid}-category`}>カテゴリ</label>
+      <select
+        id={`${uid}-category`}
+        value={category}
+        onChange={(e) => {
+          categoryEdited.current = true;
+          setCategory(e.target.value as Category);
+        }}
+      >
+        {CATEGORIES.map((c) => (
+          <option key={c} value={c}>
+            {CATEGORY_LABELS[c]}
+          </option>
+        ))}
+      </select>
+      <label htmlFor={`${uid}-tags`}>タグ{enableAi ? "（自動提案。編集も可能）" : ""}</label>
+      <input
+        id={`${uid}-tags`}
+        value={tagText}
+        onChange={(e) => {
+          tagsEdited.current = true;
+          setTagText(e.target.value);
+        }}
+        placeholder={enableAi ? "ギア名を入力すると自動で提案されます" : "防寒, 冬用"}
+      />
+      {status && <div className="hint">{status}</div>}
+      <div className="checkbox-row">
+        <input id={`${uid}-base`} type="checkbox" checked={isBase} onChange={(e) => setIsBase(e.target.checked)} />
+        <label htmlFor={`${uid}-base`}>🏕️ いつも持っていく定番装備にする</label>
+      </div>
+      {error && <div className="error">{error}</div>}
       <div className="row">
         {onCancel && (
-          <button type="button" className="btn btn-ghost" onClick={onCancel}>
+          <button type="button" className="btn btn-ghost" style={{ marginTop: 18 }} onClick={onCancel}>
             キャンセル
           </button>
         )}

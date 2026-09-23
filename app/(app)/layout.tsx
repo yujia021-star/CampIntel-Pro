@@ -11,11 +11,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <>
       <div className="container">
         <header className="header">
-          <h1 className="brand">
-            CAMP<span>INTEL</span>
-          </h1>
+          <div>
+            <h1 className="brand">🏕️ campintel AIアドバイザー</h1>
+            <p className="sub">キャンプ計画とマイギアから、リスク分析とパッキングリストをAIが提案します</p>
+          </div>
           <form action={signOut}>
-            <button className="btn btn-ghost btn-sm" type="submit">
+            <button className="btn btn-ghost btn-sm" type="submit" style={{ flexShrink: 0 }}>
               ログアウト
             </button>
           </form>

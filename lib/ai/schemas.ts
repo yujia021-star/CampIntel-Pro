@@ -5,8 +5,7 @@ import { z } from "zod";
 // 少しでも外れるとパース失敗になるため）、プロンプト本文で指示してコード側で補正する。
 
 const RiskSchema = z.object({
-  title: z.string(),
-  detail: z.string(),
+  risk: z.string(),
   severity: z.number(),
 });
 
@@ -19,7 +18,6 @@ export const DiagnosisOutputSchema = z.object({
       item: z.string(),
       category: z.string(),
       priority: z.string(),
-      reason: z.string(),
       gear_id: z.string().nullable(),
     }),
   ),

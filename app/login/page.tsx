@@ -11,7 +11,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     <div className="container" style={{ paddingTop: "18vh" }}>
       <div className="card" style={{ textAlign: "center", padding: 28 }}>
         <h1 className="brand" style={{ marginBottom: 6 }}>
-          CAMP<span>INTEL</span>
+          🏕️ campintel
         </h1>
         <p className="muted" style={{ marginTop: 0 }}>
           招待されたメールアドレスでログイン

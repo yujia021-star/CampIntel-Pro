@@ -8,7 +8,7 @@ export interface Badge {
   earned: boolean;
 }
 
-type Entry = Pick<DiaryEntry, "campsite" | "weather" | "temp_feel" | "bugs" | "sleep_quality" | "good_gear" | "bad_gear" | "note">;
+type Entry = Pick<DiaryEntry, "weather" | "temp_feel" | "bugs" | "sleep_quality" | "good_gear">;
 
 interface BadgeDef {
   id: string;
@@ -18,20 +18,32 @@ interface BadgeDef {
   test: (entries: Entry[]) => boolean;
 }
 
-const distinctCampsites = (entries: Entry[]) =>
-  new Set(entries.map((e) => e.campsite?.trim().toLowerCase()).filter(Boolean)).size;
+const count = (entries: Entry[], pred: (e: Entry) => boolean) => entries.filter(pred).length;
 
+// プロトタイプと同じ8種類
 const BADGES: BadgeDef[] = [
-  { id: "first", icon: "🌱", name: "はじめの一歩", description: "日記を初めて記録", test: (e) => e.length >= 1 },
-  { id: "three", icon: "🔥", name: "焚き火仲間", description: "日記を3件記録", test: (e) => e.length >= 3 },
-  { id: "ten", icon: "🏆", name: "ベテランキャンパー", description: "日記を10件記録", test: (e) => e.length >= 10 },
-  { id: "rain", icon: "☔", name: "雨キャンパー", description: "雨のキャンプを記録", test: (e) => e.some((x) => x.weather === "雨") },
-  { id: "cold", icon: "🥶", name: "寒さに耐えた", description: "「寒すぎ」の夜を記録", test: (e) => e.some((x) => x.temp_feel === "寒すぎ") },
-  { id: "bugs", icon: "🦟", name: "虫との戦い", description: "虫が「多い」キャンプを記録", test: (e) => e.some((x) => x.bugs === "多い") },
-  { id: "sleep", icon: "😴", name: "快眠マスター", description: "眠りの質5を記録", test: (e) => e.some((x) => x.sleep_quality >= 5) },
-  { id: "explorer", icon: "🧭", name: "開拓者", description: "3か所以上のキャンプ場を記録", test: (e) => distinctCampsites(e) >= 3 },
+  { id: "first", icon: "🏕️", name: "はじめの一歩", description: "日記を1回記録", test: (e) => e.length >= 1 },
+  { id: "three", icon: "🔥", name: "継続キャンパー", description: "日記を3回記録", test: (e) => e.length >= 3 },
+  { id: "ten", icon: "⭐", name: "ベテランキャンパー", description: "日記を10回記録", test: (e) => e.length >= 10 },
+  { id: "rain", icon: "🌧️", name: "雨キャンプマスター", description: "雨の日を3回記録", test: (e) => count(e, (x) => x.weather === "雨") >= 3 },
+  { id: "cold", icon: "🥶", name: "極寒サバイバー", description: "「寒すぎ」を3回記録", test: (e) => count(e, (x) => x.temp_feel === "寒すぎ") >= 3 },
+  { id: "bugs", icon: "🦟", name: "虫ハンター", description: "「虫が多い」を3回記録", test: (e) => count(e, (x) => x.bugs === "多い") >= 3 },
+  { id: "sleep", icon: "😴", name: "快眠の達人", description: "眠りの質★4以上を5回記録", test: (e) => count(e, (x) => x.sleep_quality >= 4) >= 5 },
+  {
+    id: "gearmeister",
+    icon: "🎒",
+    name: "ギアマイスター",
+    description: "良かったギアを合計10件記録",
+    test: (e) => e.reduce((s, x) => s + x.good_gear.length, 0) >= 10,
+  },
 ];
 
 export function computeBadges(entries: Entry[]): Badge[] {
   return BADGES.map(({ test, ...b }) => ({ ...b, earned: test(entries) }));
+}
+
+/** 記録を追加したことで新しく獲得したバッジ（なければ undefined） */
+export function newlyEarnedBadge(before: Entry[], after: Entry[]): Badge | undefined {
+  const had = new Set(computeBadges(before).filter((b) => b.earned).map((b) => b.id));
+  return computeBadges(after).find((b) => b.earned && !had.has(b.id));
 }

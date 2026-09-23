@@ -1,138 +1,143 @@
-import { riskVerdict } from "@/lib/diagnosis";
+import { riskLevelTone, riskVerdict, severityLabel } from "@/lib/diagnosis";
 import {
   CATEGORIES,
   CATEGORY_LABELS,
   PRIORITY_LABELS,
   type DiagnosisResult,
-  type PackingItem,
   type Priority,
   type Risk,
 } from "@/lib/domain";
 
 const PRIORITY_ORDER: Record<Priority, number> = { must: 0, recommended: 1, optional: 2 };
 
-function RiskList({ risks }: { risks: Risk[] }) {
-  if (risks.length === 0) return <p className="muted">特筆すべきリスクはありません。</p>;
+function RiskItems({ risks }: { risks: Risk[] }) {
+  if (risks.length === 0) return <div className="empty">特になし</div>;
   return (
     <>
-      {[...risks]
-        .sort((a, b) => b.severity - a.severity)
-        .map((r, i) => (
-          <div key={i} className={`risk sev-${r.severity}`}>
-            <div className="risk-head">
-              <span>{r.title}</span>
-              <span aria-label={`深刻度 ${r.severity}/5`}>{"●".repeat(r.severity) + "○".repeat(5 - r.severity)}</span>
-            </div>
-            <p>{r.detail}</p>
+      {risks.map((r, i) => {
+        const sev = severityLabel(r.severity);
+        return (
+          <div key={i} className={`risk-item tone-${sev.tone}`}>
+            <span className="risk-dot" />
+            <span className="risk-sev">
+              {sev.label}({r.severity})
+            </span>
+            <span>{r.risk}</span>
           </div>
-        ))}
+        );
+      })}
     </>
   );
 }
 
-function PackingRow({ p }: { p: PackingItem }) {
-  return (
-    <div className="pack-item">
-      <span aria-hidden>{p.owned ? "✅" : "⬜"}</span>
-      <div style={{ minWidth: 0 }}>
-        <div>{p.item}</div>
-        {p.reason && <div className="reason">{p.reason}</div>}
-      </div>
-      <div className="pack-badges">
-        {p.is_base && <span className="badge badge-base">定番</span>}
-        <span className={`badge ${p.owned ? "badge-owned" : "badge-need"}`}>{p.owned ? "所持" : "要準備"}</span>
-        <span className={`badge badge-${p.priority}`}>{PRIORITY_LABELS[p.priority]}</span>
-      </div>
-    </div>
-  );
-}
-
-export function DiagnosisView({ result, title }: { result: DiagnosisResult; title?: string }) {
+export function DiagnosisView({ result }: { result: DiagnosisResult }) {
   const verdict = riskVerdict(result.risk_level);
-  const owned = result.packing_list.filter((p) => p.owned);
+  const levelTone = riskLevelTone(result.risk_level);
+  const gapCount = result.total_count - result.owned_count;
 
   return (
     <section>
-      {title && <h2>{title}</h2>}
-
-      <div className="scores">
-        <div className="score">
-          <div className="score-label">リスクレベル</div>
-          <div className={`score-num tone-${verdict.tone}`} style={{ background: "none", border: "none" }}>
-            {result.risk_level.toFixed(1)}
-          </div>
-          <div className="score-label">/ 5.0</div>
+      <div className="card">
+        <h2>📊 総合評価</h2>
+        <div className={`verdict-banner tone-${verdict.tone}`}>
+          <div className="verdict-title">{verdict.title}</div>
+          <div className="verdict-text">{verdict.text}</div>
         </div>
-        <div className="score">
-          <div className="score-label">準備度</div>
-          <div className="score-num">{result.readiness_pct}%</div>
-          <div className="meter">
-            <div style={{ width: `${result.readiness_pct}%` }} />
+        <div className="score-row">
+          <div className={`score-box tone-${levelTone}`}>
+            <div className="score-label">リスクレベル</div>
+            <div className="score-value">
+              {result.risk_level.toFixed(1)}
+              <span className="score-unit">/5</span>
+            </div>
+            <div className="score-bar">
+              <div className="score-fill" style={{ width: `${(result.risk_level / 5) * 100}%` }} />
+            </div>
           </div>
-          <div className="score-label" style={{ marginTop: 6 }}>
-            {result.total_count}件中 {result.owned_count}件をマイギアでカバー
+          <div className="score-box tone-ok">
+            <div className="score-label">準備度</div>
+            <div className="score-value">
+              {result.readiness_pct}
+              <span className="score-unit">%</span>
+            </div>
+            <div className="score-bar">
+              <div className="score-fill" style={{ width: `${result.readiness_pct}%` }} />
+            </div>
           </div>
+        </div>
+        <div className="score-caption">
+          リスクレベル:
+          各リスクについて「対策を怠った場合に起こりうる影響の大きさ」を1(軽微)〜5(重大)でAIが評価し、平均したものです。目安:
+          〜2未満=問題なし / 2〜3=軽度の注意 / 3〜4=要注意 / 4以上=警戒(中止も検討)。
+          <br />
+          準備度: パッキングリストの全アイテムのうち、所持している割合です。
         </div>
       </div>
 
-      <div className={`verdict tone-${verdict.tone}`}>判定: {verdict.label}</div>
-
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>🌄 環境・気候リスク</h3>
-        <RiskList risks={result.environment_risks} />
-        <h3>🐻 生物・サイトリスク</h3>
-        <RiskList risks={result.bio_site_risks} />
+        <h2>💬 総合アドバイス</h2>
+        {result.diary_count_used > 0 && (
+          <div className="score-caption" style={{ marginTop: 0, marginBottom: 8 }}>
+            ⚡ 過去の日記{result.diary_count_used}件の傾向を踏まえた提案です
+          </div>
+        )}
+        <div className="comment">
+          {result.overall_advice || "アドバイスの生成に失敗しました。もう一度「診断する」を押してみてください。"}
+        </div>
       </div>
 
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>🏷️ 推奨ギアタグ</h3>
-        <div>
+        <h2>⚠️ 環境・気候リスク</h2>
+        <RiskItems risks={result.environment_risks} />
+      </div>
+
+      <div className="card">
+        <h2>🐾 生物・サイト特有のリスク</h2>
+        <RiskItems risks={result.bio_site_risks} />
+      </div>
+
+      <div className="card">
+        <h2>🏷️ 推奨ギアタグ</h2>
+        <div className="tags">
           {result.recommended_tags.map((t) => (
             <span key={t} className="tag">
               #{t}
             </span>
           ))}
         </div>
-        <h3>🎒 所持ギアとのマッチング</h3>
-        {owned.length === 0 ? (
-          <p className="muted">マイギアに該当するものがありません。マイギアを登録すると精度が上がります。</p>
-        ) : (
-          <div className="chips">
-            {owned.map((p) => (
-              <span key={p.gear_id ?? p.item} className="tag">
-                {p.item}
-              </span>
-            ))}
-          </div>
-        )}
+        {/* カバー件数と要準備件数は準備度と同じパッキングリストから数える */}
+        <p className="muted" style={{ marginTop: 10, marginBottom: 0 }}>
+          <span className="badge badge-owned" style={{ marginLeft: 0 }}>
+            ✓ マイギアでカバー {result.owned_count}件
+          </span>
+          <span className="badge badge-need">要準備 {gapCount}件</span>
+        </p>
       </div>
 
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>📋 パッキングリスト</h3>
-        {CATEGORIES.map((cat) => {
-          const items = result.packing_list
-            .filter((p) => p.category === cat)
-            .sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
-          if (items.length === 0) return null;
-          return (
-            <div key={cat} style={{ marginBottom: 12 }}>
-              <div style={{ fontWeight: 700, fontSize: "0.85rem", marginTop: 8 }}>{CATEGORY_LABELS[cat]}</div>
-              {items.map((p, i) => (
-                <PackingRow key={`${p.item}-${i}`} p={p} />
-              ))}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>💡 総合アドバイス</h3>
-        {result.diary_count_used > 0 && (
-          <p className="muted" style={{ marginTop: 0 }}>
-            📓 過去の日記{result.diary_count_used}件を踏まえた提案です
-          </p>
-        )}
-        <div className="advice">{result.overall_advice}</div>
+        <h2>🎒 パッキングリスト</h2>
+        <div className="checklist">
+          {CATEGORIES.map((cat) => {
+            const items = result.packing_list
+              .filter((p) => p.category === cat)
+              .sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
+            if (items.length === 0) return null;
+            return (
+              <div key={cat}>
+                <div className="checklist-cat">{CATEGORY_LABELS[cat]}</div>
+                {items.map((p, i) => (
+                  <label key={`${p.item}-${i}`}>
+                    <input type="checkbox" />
+                    <span className="item-name">{p.item}</span>
+                    {p.is_base && <span className="badge badge-base">定番</span>}
+                    <span className={`badge ${p.owned ? "badge-owned" : "badge-need"}`}>{p.owned ? "所持" : "要準備"}</span>
+                    <span className={`badge badge-${p.priority}`}>{PRIORITY_LABELS[p.priority]}</span>
+                  </label>
+                ))}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </section>
   );

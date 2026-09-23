@@ -5,19 +5,19 @@ import { DiagnosisView } from "@/components/DiagnosisView";
 import { LoadingOverlay } from "@/components/Loading";
 import type { DiagnosisResult } from "@/lib/domain";
 
+// 選択肢はプロトタイプと同じ。datalist なので自由入力もできる
 const OPTIONS = {
-  terrain: ["高原", "山間・林間", "湖畔", "河原", "海辺", "平地・公園"],
-  ground: ["芝生", "土", "砂利", "砂", "硬い地面・岩"],
-  transport: ["車", "バイク", "自転車", "公共交通＋徒歩"],
-  companions: ["ソロ", "夫婦・カップル", "家族（子ども連れ）", "友人グループ", "ペット連れ"],
-  style: ["オートサイト", "フリーサイト", "区画サイト（電源あり）", "ソロ・ブッシュクラフト", "登山・徒歩キャンプ"],
+  terrain: ["林間", "湖畔", "高原", "海辺", "河原"],
+  ground: ["固い土", "砂地", "芝生", "岩場", "ぬかるみ"],
+  transport: ["車", "バイク", "公共交通機関", "徒歩"],
+  companions: ["ソロ", "友人", "家族", "パートナー"],
 };
 
-function Suggest({ id, label, name, options, placeholder }: { id: string; label: string; name: string; options: string[]; placeholder?: string }) {
+function Suggest({ id, label, name, options }: { id: string; label: string; name: string; options: string[] }) {
   return (
     <div className="field">
       <label htmlFor={id}>{label}</label>
-      <input id={id} name={name} list={`${id}-list`} placeholder={placeholder ?? "選択または入力"} autoComplete="off" />
+      <input id={id} name={name} list={`${id}-list`} placeholder="選択または入力" autoComplete="off" />
       <datalist id={`${id}-list`}>
         {options.map((o) => (
           <option key={o} value={o} />
@@ -60,12 +60,12 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
 
   return (
     <>
-      {pending && <LoadingOverlay message="AIが計画を診断しています…" />}
+      {pending && <LoadingOverlay message="診断中...(30〜60秒程度かかることがあります)" />}
       <form className="card" onSubmit={onSubmit}>
-        <h2>🧭 プラン診断</h2>
+        <h2>📋 キャンプ計画</h2>
         <div className="field">
-          <label htmlFor="campsite">キャンプ場名 *</label>
-          <input id="campsite" name="campsite" required maxLength={100} placeholder="例: ふもとっぱら" />
+          <label htmlFor="campsite">キャンプ場名</label>
+          <input id="campsite" name="campsite" required maxLength={100} placeholder="例: WOODSMAN CAMPGROUND" />
         </div>
         <div className="row">
           <div className="field">
@@ -95,14 +95,17 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
           <Suggest id="transport" name="transport" label="移動手段" options={OPTIONS.transport} />
           <Suggest id="companions" name="companions" label="同行者" options={OPTIONS.companions} />
         </div>
-        <Suggest id="style" name="style" label="スタイル・サイト" options={OPTIONS.style} />
+        <div className="field">
+          <label htmlFor="style">スタイル</label>
+          <input id="style" name="style" maxLength={100} placeholder="例: まったり焚き火読書 / フリーサイト" />
+        </div>
 
-        <p className="muted" style={{ marginTop: 0 }}>
+        <p className="hint">
           マイギア {gearCount}件・日記（直近{Math.min(diaryCount, 5)}件）を診断に反映します
         </p>
         {error && <p className="error">{error}</p>}
         <button className="btn btn-primary" type="submit" disabled={pending}>
-          診断する
+          🔍 診断する
         </button>
       </form>
 
