@@ -152,7 +152,7 @@ function PackingCard({ result, affiliate }: { result: DiagnosisResult; affiliate
     <div className="card">
       <h2>🎒 持ち物</h2>
       <p className="muted" style={{ marginTop: 0 }}>
-        全{result.total_count}件のうち、マイギアで{result.owned_count}件そろっています。
+        今回必要な{result.total_count}件のうち、足りないのは<b>{need.length}件</b>です。
       </p>
 
       {need.length > 0 && (
@@ -183,9 +183,19 @@ function PackingCard({ result, affiliate }: { result: DiagnosisResult; affiliate
         </>
       )}
 
+      {need.length === 0 && <p className="pack-ok">🎉 足りないものはありません。マイギアでそろっています。</p>}
+
       {owned.length > 0 && (
-        <>
-          <h3 className="pack-head">✅ マイギアから持っていく（{owned.length}件）</h3>
+        // 主役は「足りないもの」。持っているものは出発前の荷造りチェック用なので、畳んでおく
+        <details className="pack-owned">
+          <summary>
+            <span className="pack-head">✅ マイギアから持っていく（{owned.length}件）</span>
+            <span className="pack-summary muted">
+              {CATEGORIES.filter((c) => owned.some((p) => p.category === c))
+                .map((c) => `${CATEGORY_LABELS[c]} ${owned.filter((p) => p.category === c).length}`)
+                .join("・")}
+            </span>
+          </summary>
           <div className="checklist">
             {CATEGORIES.map((cat) => {
               const items = owned.filter((p) => p.category === cat).sort(byPriority);
@@ -204,9 +214,9 @@ function PackingCard({ result, affiliate }: { result: DiagnosisResult; affiliate
               );
             })}
           </div>
-        </>
+          <p className="hint" style={{ marginBottom: 0 }}>出発前の荷造りチェックに使えます（チェックは保存されません）。</p>
+        </details>
       )}
-      <p className="hint" style={{ marginBottom: 0 }}>チェックを付けながら荷造りに使えます（チェックは保存されません）。</p>
     </div>
   );
 }
