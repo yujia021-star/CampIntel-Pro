@@ -5,6 +5,7 @@ import { z } from "zod";
 import { DiagnosisView } from "@/components/DiagnosisView";
 import { dayLabel } from "@/components/WeatherCard";
 import { NIGHTS_LABELS, type DiagnosisResult } from "@/lib/domain";
+import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
 // 共有リンクのページ。ログイン不要で、トークンが一致する診断だけを読み取り専用の関数で取る
@@ -61,7 +62,7 @@ export default async function SharedPlanPage({ params }: { params: Promise<{ tok
           {new Date(plan.created_at).toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })} に診断
         </p>
       </div>
-      <DiagnosisView result={plan.result} campsite={plan.campsite} companions={plan.companions} shared />
+      <DiagnosisView result={plan.result} campsite={plan.campsite} companions={plan.companions} affiliate={env.affiliateIds()} shared />
     </div>
   );
 }

@@ -66,10 +66,10 @@ Next.js (App Router) + Supabase + Claude API で動きます。
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase の anon / publishable key |
 | `ANTHROPIC_API_KEY` | Anthropic API キー（サーバー側のみで使用） |
 | `ANTHROPIC_MODEL` | 任意。既定は `claude-sonnet-5` |
-| `NEXT_PUBLIC_AMAZON_ASSOCIATE_TAG` | 任意。Amazon アソシエイトのトラッキングID（例: `xxxx-22`） |
-| `NEXT_PUBLIC_RAKUTEN_AFFILIATE_ID` | 任意。楽天アフィリエイトID |
+| `AMAZON_ASSOCIATE_TAG` | 任意。Amazon アソシエイトのトラッキングID（例: `xxxx-22`） |
+| `RAKUTEN_AFFILIATE_ID` | 任意。楽天アフィリエイトID（例: `11ca5921.5c328832.11ca5922.482e8d00`） |
 
-`NEXT_PUBLIC_` の変数はビルド時に埋め込まれるので、設定・変更したら再デプロイします。
+アフィリエイトIDはサーバーで実行時に読みます（ビルドキャッシュに残らない）。設定・変更・削除したら再デプロイします。
 
 ### 3. ローカル起動
 

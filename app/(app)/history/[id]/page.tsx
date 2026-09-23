@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DiagnosisView } from "@/components/DiagnosisView";
 import { ForecastRecheck } from "@/components/ForecastRecheck";
+import { env } from "@/lib/env";
 import { NIGHTS_LABELS, type CampPlan } from "@/lib/domain";
 import { getUser } from "@/lib/supabase/server";
 import { DeletePlanButton } from "./DeletePlanButton";
@@ -47,7 +48,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
           saved={plan.result.weather}
         />
       )}
-      {plan.result ? <DiagnosisView result={plan.result} planId={plan.id} campsite={plan.campsite} companions={plan.companions} transport={plan.transport} /> : <p className="muted">診断結果がありません。</p>}
+      {plan.result ? <DiagnosisView result={plan.result} planId={plan.id} campsite={plan.campsite} companions={plan.companions} transport={plan.transport} affiliate={env.affiliateIds()} /> : <p className="muted">診断結果がありません。</p>}
     </>
   );
 }

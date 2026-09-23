@@ -41,6 +41,15 @@ describe("外部リンク", () => {
     expect(hasAffiliate({ amazonTag: "x", rakutenId: undefined })).toBe(true);
   });
 
+  it("通販の検索語からカッコ書きや「または」以降を外す", async () => {
+    const { shopQuery } = await import("./links");
+    expect(shopQuery("レインウェア（大人・子ども用）")).toBe("レインウェア");
+    expect(shopQuery("熊鈴または熊よけスプレー")).toBe("熊鈴");
+    expect(shopQuery("OD缶(ガス燃料)")).toBe("OD缶");
+    expect(shopQuery("（予備）")).toBe("（予備）");
+    expect(shopLinks("寝袋（冬用）", {})[0].url).toBe(`https://www.amazon.co.jp/s?k=${encodeURIComponent("寝袋")}`);
+  });
+
   it("予約リンクはキャンプ場名で検索する", () => {
     expect(reserveLinks(" ふもとっぱら ")[0].url).toContain(encodeURIComponent("ふもとっぱら site:nap-camp.com"));
   });
