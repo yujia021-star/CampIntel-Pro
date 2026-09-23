@@ -15,9 +15,14 @@ export function routeLinks(p: LatLon & { name?: string }) {
   };
 }
 
-/** その地点の周辺を Google マップで検索するリンク（例: 「温泉」） */
-export function mapsSearchUrl(keyword: string, p: LatLon, zoom = 12): string {
-  return `https://www.google.com/maps/search/${encodeURIComponent(keyword)}/@${coord(p)},${zoom}z`;
+/**
+ * 診断した場所の周辺を Google マップで検索するリンク（例: 「日帰り温泉 神奈川県茅ヶ崎市柳島」）。
+ * 地図の中心の指定（@緯度,経度）はスマホの Google マップアプリでは無視され、今いる場所の周りを探してしまうため、
+ * 場所の住所（なければ名前）を検索語に入れて、診断した場所の周りを探させる。
+ */
+export function mapsSearchUrl(keyword: string, place: { name: string; address?: string | null }): string {
+  const area = place.address?.trim() || place.name;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${keyword} ${area}`)}`;
 }
 
 export type NearbyKind =

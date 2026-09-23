@@ -268,3 +268,10 @@ textarea { resize: vertical; min-height: 64px; }
 }
 .shop-links { display: inline-flex; gap: 6px; margin-left: 6px; font-size: 0.75rem; }
 .pr-label { font-size: 0.7rem; border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; color: var(--muted, #888); }
+
+/* 持ち物 */
+.pack-head { margin: 14px 0 4px; font-size: 0.95rem; }
+.pack-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pack-row label { flex: 1; min-width: 0; }
+.pack-optional { font-size: 0.75rem; }
+.checklist-cat { font-size: 0.85rem; color: var(--muted); }

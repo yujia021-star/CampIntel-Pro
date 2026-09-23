@@ -8,9 +8,9 @@ import {
   CATEGORY_LABELS,
   NIGHTS_ICONS,
   NIGHTS_LABELS,
-  PRIORITY_LABELS,
   RISK_BASIS_LABELS,
   type DiagnosisResult,
+  type PackingItem,
   type Priority,
   type Risk,
   type SiteConditions,
@@ -139,6 +139,78 @@ function PlaceCard({ result, siteName }: { result: DiagnosisResult; siteName: st
   );
 }
 
+const byPriority = (a: PackingItem, b: PackingItem) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+
+/**
+ * 持ち物。「用意が必要なもの」と「マイギアから持っていくもの」に分けて、
+ * それぞれ一目で分かるようにする（所持／要準備のバッジを並べない）。
+ */
+function PackingCard({ result, affiliate }: { result: DiagnosisResult; affiliate: boolean }) {
+  const need = result.packing_list.filter((p) => !p.owned).sort(byPriority);
+  const owned = result.packing_list.filter((p) => p.owned);
+  return (
+    <div className="card">
+      <h2>🎒 持ち物</h2>
+      <p className="muted" style={{ marginTop: 0 }}>
+        全{result.total_count}件のうち、マイギアで{result.owned_count}件そろっています。
+      </p>
+
+      {need.length > 0 && (
+        <>
+          <h3 className="pack-head">
+            🛒 用意が必要（{need.length}件）{affiliate && <span className="pr-label">PR</span>}
+          </h3>
+          <div className="checklist">
+            {need.map((p, i) => (
+              <div key={`${p.item}-${i}`} className="pack-row">
+                <label>
+                  <input type="checkbox" />
+                  <span className="item-name">{p.item}</span>
+                  {p.priority === "must" && <span className="badge badge-must">必須</span>}
+                  {p.priority === "optional" && <span className="muted pack-optional">あれば</span>}
+                </label>
+                <span className="shop-links">
+                  {shopLinks(p.item).map((l) => (
+                    <a key={l.label} href={l.url} target="_blank" rel="noreferrer sponsored">
+                      {l.label}
+                    </a>
+                  ))}
+                </span>
+              </div>
+            ))}
+          </div>
+          {affiliate && <p className="hint">通販リンクには広告（アフィリエイト）を含みます。</p>}
+        </>
+      )}
+
+      {owned.length > 0 && (
+        <>
+          <h3 className="pack-head">✅ マイギアから持っていく（{owned.length}件）</h3>
+          <div className="checklist">
+            {CATEGORIES.map((cat) => {
+              const items = owned.filter((p) => p.category === cat).sort(byPriority);
+              if (items.length === 0) return null;
+              return (
+                <div key={cat}>
+                  <div className="checklist-cat">{CATEGORY_LABELS[cat]}</div>
+                  {items.map((p, i) => (
+                    <label key={`${p.item}-${i}`}>
+                      <input type="checkbox" />
+                      <span className="item-name">{p.item}</span>
+                      {p.priority === "optional" && <span className="muted pack-optional">あれば</span>}
+                    </label>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+      <p className="hint" style={{ marginBottom: 0 }}>チェックを付けながら荷造りに使えます（チェックは保存されません）。</p>
+    </div>
+  );
+}
+
 export function DiagnosisView({
   result,
   planId,
@@ -158,7 +230,6 @@ export function DiagnosisView({
   const affiliate = hasAffiliate();
   const verdict = riskVerdict(result.risk_level);
   const counts = countBySeverity([...result.environment_risks, ...result.bio_site_risks]);
-  const gapCount = result.total_count - result.owned_count;
 
   return (
     <section>
@@ -250,65 +321,7 @@ export function DiagnosisView({
         </div>
       </div>
 
-      <div className="card">
-        <h2>🏷️ 推奨ギアタグ</h2>
-        <div className="tags">
-          {result.recommended_tags.map((t) => (
-            <span key={t} className="tag">
-              #{t}
-            </span>
-          ))}
-        </div>
-        {/* カバー件数と要準備件数は準備度と同じパッキングリストから数える */}
-        <p className="muted" style={{ marginTop: 10, marginBottom: 0 }}>
-          <span className="badge badge-owned" style={{ marginLeft: 0 }}>
-            ✓ マイギアでカバー {result.owned_count}件
-          </span>
-          <span className="badge badge-need">要準備 {gapCount}件</span>
-        </p>
-      </div>
-
-      <div className="card">
-        <h2>
-          🎒 パッキングリスト {affiliate && gapCount > 0 && <span className="pr-label">PR</span>}
-        </h2>
-        {gapCount > 0 && (
-          <p className="hint" style={{ marginTop: 0 }}>
-            「要準備」のものは、Amazon・楽天で探せます{affiliate ? "（リンクには広告（アフィリエイト）を含みます）" : ""}。
-          </p>
-        )}
-        <div className="checklist">
-          {CATEGORIES.map((cat) => {
-            const items = result.packing_list
-              .filter((p) => p.category === cat)
-              .sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
-            if (items.length === 0) return null;
-            return (
-              <div key={cat}>
-                <div className="checklist-cat">{CATEGORY_LABELS[cat]}</div>
-                {items.map((p, i) => (
-                  <label key={`${p.item}-${i}`}>
-                    <input type="checkbox" />
-                    <span className="item-name">{p.item}</span>
-                    {p.is_base && <span className="badge badge-base">定番</span>}
-                    <span className={`badge ${p.owned ? "badge-owned" : "badge-need"}`}>{p.owned ? "所持" : "要準備"}</span>
-                    <span className={`badge badge-${p.priority}`}>{PRIORITY_LABELS[p.priority]}</span>
-                    {!p.owned && (
-                      <span className="shop-links">
-                        {shopLinks(p.item).map((l) => (
-                          <a key={l.label} href={l.url} target="_blank" rel="noreferrer sponsored">
-                            {l.label}
-                          </a>
-                        ))}
-                      </span>
-                    )}
-                  </label>
-                ))}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <PackingCard result={result} affiliate={affiliate} />
       {planId && !shared && (
         <div className="card">
           <ShareButton planId={planId} title={siteName || "キャンプ"} />

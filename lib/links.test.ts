@@ -6,9 +6,11 @@ describe("外部リンク", () => {
     const r = routeLinks({ lat: 35.3151234, lon: 139.39, name: "柳島キャンプ場" });
     expect(r.google).toBe("https://www.google.com/maps/dir/?api=1&destination=35.31512,139.39000");
     expect(r.apple).toContain("daddr=35.31512,139.39000");
-    expect(mapsSearchUrl("日帰り温泉", { lat: 35, lon: 139 })).toBe(
-      `https://www.google.com/maps/search/${encodeURIComponent("日帰り温泉")}/@35.00000,139.00000,12z`,
+    // 住所を検索語に入れて、今いる場所ではなく診断した場所の周りを探す
+    expect(mapsSearchUrl("日帰り温泉", { name: "柳島キャンプ場", address: "神奈川県 茅ヶ崎市" })).toBe(
+      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent("日帰り温泉 神奈川県 茅ヶ崎市")}`,
     );
+    expect(mapsSearchUrl("コンビニ", { name: "ふもとっぱら", address: "" })).toContain(encodeURIComponent("コンビニ ふもとっぱら"));
   });
 
   it("同行者で周辺施設の並びを変える（温泉・買い出し・病院は常に出す）", () => {
