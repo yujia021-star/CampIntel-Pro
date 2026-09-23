@@ -32,6 +32,23 @@ export async function createGear(input: GearInput): Promise<ActionResult> {
   return { ok: true };
 }
 
+/** 写真から見つけた複数のギアをまとめて登録する */
+export async function createGears(inputs: GearInput[]): Promise<ActionResult> {
+  if (inputs.length === 0) return { ok: false, message: "登録するギアを選んでください" };
+  if (inputs.length > 30) return { ok: false, message: "一度に登録できるのは30件までです" };
+  const rows = [];
+  for (const input of inputs) {
+    const parsed = GearInput.safeParse(input);
+    if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "入力が不正です" };
+    rows.push(parsed.data);
+  }
+  const { supabase, user } = await authed();
+  const { error } = await supabase.from("gears").insert(rows.map((r) => ({ ...r, user_id: user.id })));
+  if (error) return { ok: false, message: "保存に失敗しました" };
+  revalidatePath("/gear");
+  return { ok: true };
+}
+
 export async function updateGear(id: string, input: GearInput): Promise<ActionResult> {
   const parsed = GearInput.safeParse(input);
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "入力が不正です" };

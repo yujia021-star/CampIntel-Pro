@@ -33,8 +33,11 @@ export const GearSuggestionSchema = z.object({
 });
 
 export const GearRecognitionSchema = z.object({
-  recognized: z.boolean(),
-  name: z.string(),
-  tags: z.array(z.string()),
-  category: z.string(),
+  items: z.array(
+    z.object({
+      name: z.string(),
+      tags: z.array(z.string()),
+      category: z.string(),
+    }),
+  ),
 });

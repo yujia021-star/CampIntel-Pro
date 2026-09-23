@@ -126,9 +126,15 @@ export function buildGearSuggestPrompt(name: string): string {
   return `「${name}」というキャンプギアのカテゴリとタグを提案してください。`;
 }
 
+// 1枚の写真に複数のギアが写っていてもまとめて登録できるよう、すべて列挙させる
+export const GEAR_RECOGNIZE_MAX_ITEMS = 15;
+
 export const GEAR_RECOGNIZE_SYSTEM = `あなたはキャンプギアの画像認識アシスタントです。
-画像に写っているキャンプギアを1つ特定します。
+画像に写っているキャンプギアをすべて特定し、items に1つずつ入れます（最大${GEAR_RECOGNIZE_MAX_ITEMS}個）。
 - name: ギア名。ブランド名や型番が読み取れる場合は含める。
 - category: ${CATEGORY_GUIDE} のいずれかのキー。
 - tags: 関連するタグを5個程度、日本語の単語で（#記号なし）。
-- キャンプギアが写っていない、または判別できない場合は recognized を false にし、name は空文字、tags は空配列、category は other にする。`;
+- 同じ種類のものが複数あっても（例: ペグ10本）1つにまとめる。
+- 収納袋・付属品など、本体と一体のものは本体に含めて別に数えない。
+- 人・車・地面・背景の自然物などキャンプギアでないものは入れない。
+- キャンプギアが写っていない、または判別できない場合は items を空配列にする。`;

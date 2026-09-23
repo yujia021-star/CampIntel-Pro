@@ -1,7 +1,7 @@
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { aiErrorResponse, anthropic, enforceRateLimit, model, requireParsed } from "@/lib/ai/client";
-import { GEAR_RECOGNIZE_SYSTEM } from "@/lib/ai/prompts";
+import { GEAR_RECOGNIZE_MAX_ITEMS, GEAR_RECOGNIZE_SYSTEM } from "@/lib/ai/prompts";
 import { GearRecognitionSchema } from "@/lib/ai/schemas";
 import { isCategory } from "@/lib/domain";
 import { getUser } from "@/lib/supabase/server";
@@ -30,26 +30,36 @@ export async function POST(request: Request) {
     await enforceRateLimit(supabase, user.id, "gear_recognize");
     const response = await anthropic().messages.parse({
       model: model(),
-      max_tokens: 4000,
+      max_tokens: 8000,
       system: GEAR_RECOGNIZE_SYSTEM,
       messages: [
         {
           role: "user",
           content: [
             { type: "image", source: { type: "base64", media_type: parsed.data.media_type, data: parsed.data.data } },
-            { type: "text", text: "この写真のキャンプギアを特定してください。" },
+            { type: "text", text: "この写真に写っているキャンプギアをすべて特定してください。" },
           ],
         },
       ],
       output_config: { effort: "low", format: zodOutputFormat(GearRecognitionSchema) },
     });
     const out = requireParsed(response);
-    return Response.json({
-      recognized: out.recognized && out.name.trim() !== "",
-      name: out.name.trim(),
-      tags: normalizeTags(out.tags),
-      category: isCategory(out.category) ? out.category : "other",
-    });
+    const seen = new Set<string>();
+    const items = out.items
+      .map((x) => ({
+        name: x.name.trim().slice(0, 100),
+        tags: normalizeTags(x.tags).slice(0, 10),
+        category: isCategory(x.category) ? x.category : "other",
+      }))
+      .filter((x) => {
+        // 空の名前と同名の重複を除く
+        const key = x.name.toLowerCase();
+        if (!x.name || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, GEAR_RECOGNIZE_MAX_ITEMS);
+    return Response.json({ items });
   } catch (error) {
     return aiErrorResponse(error);
   }
