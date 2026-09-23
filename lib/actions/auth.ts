@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { loginErrorMessage } from "@/lib/auth-errors";
 import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -21,12 +22,8 @@ export async function sendMagicLink(_prev: LoginState, formData: FormData): Prom
   });
 
   if (error) {
-    // ホワイトリスト外のメールはDBトリガーで拒否され、ここでエラーになる
-    console.error("[login]", error.message);
-    return {
-      status: "error",
-      message: "ログインリンクを送れませんでした。招待されたメールアドレスか確認してください。",
-    };
+    console.error("[login]", error.code, error.status, error.message);
+    return { status: "error", message: loginErrorMessage(error) };
   }
   return { status: "sent", message: `${parsed.data} にログインリンクを送りました。メールを確認してください。` };
 }
