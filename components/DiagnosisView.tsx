@@ -165,7 +165,7 @@ export function DiagnosisView({
       <PlaceCard result={result} siteName={siteName} />
       {result.weather && <WeatherCard weather={result.weather} title="🌦️ 診断に使った天気予報" />}
       {result.location && (
-        <NearbyCard location={result.location} companions={companions} fetchNames={!shared} />
+        <NearbyCard location={result.location} companions={companions} />
       )}
 
       <div className="card">
