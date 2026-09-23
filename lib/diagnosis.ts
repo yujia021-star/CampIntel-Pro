@@ -11,6 +11,7 @@ import {
   type Risk,
   type RiskBasis,
   RISK_BASES,
+  looksConsumable,
 } from "@/lib/domain";
 import { addDays, type ForecastResult } from "@/lib/weather/forecast";
 import { normalizeTags } from "@/lib/tags";
@@ -27,6 +28,8 @@ export interface RawDiagnosis {
     category: string;
     priority: string;
     gear_id: string | null;
+    /** 使うと減る物（燃料・食料・ゴミ袋など）か。古い出力にはない */
+    consumable?: boolean;
   }[];
   overall_advice: string;
 }
@@ -179,6 +182,7 @@ export function finalizeDiagnosis(
       gear_id: gear?.id ?? null,
       owned: Boolean(gear),
       is_base: Boolean(gear?.is_base),
+      consumable: p.consumable ?? looksConsumable(gear?.name ?? name),
     });
   }
 
@@ -191,6 +195,7 @@ export function finalizeDiagnosis(
         gear_id: g.id,
         owned: true,
         is_base: true,
+        consumable: looksConsumable(g.name),
       });
       usedGearIds.add(g.id);
     }

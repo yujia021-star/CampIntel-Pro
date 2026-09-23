@@ -271,9 +271,13 @@ textarea { resize: vertical; min-height: 64px; }
 
 /* 持ち物 */
 .pack-head { margin: 14px 0 4px; font-size: 0.95rem; }
-.pack-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.pack-row label { flex: 1; min-width: 0; }
-.pack-optional { font-size: 0.75rem; }
+.pack-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin: 8px 0; }
+.checklist .pack-label { flex: 1; min-width: 0; display: flex; align-items: flex-start; flex-wrap: nowrap; gap: 8px; margin: 0; }
+.checklist .pack-label input[type="checkbox"] { flex: 0 0 auto; margin-top: 3px; }
+.pack-text { min-width: 0; line-height: 1.45; }
+.pack-text .badge { margin-left: 6px; vertical-align: 1px; }
+.pack-note { font-size: 0.75rem; margin-left: 6px; }
+.pack-row .shop-links { flex: 0 0 auto; margin: 2px 0 0; }
 .checklist-cat { font-size: 0.85rem; color: var(--muted); }
 .pack-ok { margin: 8px 0; font-weight: 600; color: var(--green); }
 .pack-owned { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 10px; }

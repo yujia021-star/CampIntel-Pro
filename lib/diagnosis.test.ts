@@ -201,3 +201,29 @@ describe("滞在の日程", () => {
     expect(stayOf({ nights: 1, planned_date: null })).toEqual({ nights: 1, start: null, end: null });
   });
 });
+
+describe("消耗品", () => {
+  it("AIの判定を使い、ないときは名前から推定する", async () => {
+    const { finalizeDiagnosis } = await import("./diagnosis");
+    const { isConsumable } = await import("@/lib/domain");
+    const r = finalizeDiagnosis(
+      {
+        environment_risks: [],
+        bio_site_risks: [],
+        recommended_tags: [],
+        overall_advice: "",
+        packing_list: [
+          { item: "ランタン", category: "other", priority: "must", gear_id: null, consumable: false },
+          { item: "OD缶", category: "fire_and_cooking", priority: "must", gear_id: null },
+          { item: "ゴミ袋", category: "other", priority: "must", gear_id: null, consumable: true },
+        ],
+      },
+      [],
+      0,
+    );
+    expect(r.packing_list.map((p) => p.consumable)).toEqual([false, true, true]);
+    // 古い診断結果（consumable なし）も名前から分ける
+    expect(isConsumable({ item: "薪" })).toBe(true);
+    expect(isConsumable({ item: "テント" })).toBe(false);
+  });
+});
