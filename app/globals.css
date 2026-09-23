@@ -330,3 +330,5 @@ button.link-chip { cursor: pointer; font: inherit; font-size: 0.85rem; }
 @media (display-mode: standalone) {
   body { padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
 }
+.reused-note { font-size: 0.85rem; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.reused-note .btn { margin: 0; }

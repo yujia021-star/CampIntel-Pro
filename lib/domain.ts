@@ -178,4 +178,6 @@ export interface DiagnosisResult {
   stay?: { nights: number; start: string | null; end: string | null } | null;
   conditions?: SiteConditions | null;
   weather?: import("@/lib/weather/forecast").ForecastResult | null;
+  /** 診断に使った条件の指紋。同じ条件なら前回の結果を使い回す（AIの料金をかけない・結果をぶらさない） */
+  fingerprint?: string;
 }

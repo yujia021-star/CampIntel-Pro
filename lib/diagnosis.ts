@@ -13,6 +13,7 @@ import {
   RISK_BASES,
   looksConsumable,
 } from "@/lib/domain";
+import { applyStableRisks, type RegionRisks } from "@/lib/stable-risks";
 import { addDays, type ForecastResult } from "@/lib/weather/forecast";
 import { normalizeTags } from "@/lib/tags";
 
@@ -152,7 +153,13 @@ export function finalizeDiagnosis(
   raw: RawDiagnosis,
   gears: Gear[],
   diaryCountUsed: number,
-  context: { location?: PlaceRef | null; weather?: ForecastResult | null; plan?: CampPlanInput } = {},
+  context: {
+    location?: PlaceRef | null;
+    weather?: ForecastResult | null;
+    plan?: CampPlanInput;
+    /** アプリが決めたリスク（天気・同じ場所と月の地域リスク）。AI の同じ種類のリスクと置き換える */
+    fixed?: { weather?: Risk[] | null; region?: RegionRisks | null };
+  } = {},
 ): DiagnosisResult {
   const gearById = new Map(gears.map((g) => [g.id, g]));
   const gearByName = new Map(gears.map((g) => [g.name.trim().toLowerCase(), g]));
@@ -201,8 +208,10 @@ export function finalizeDiagnosis(
     }
   }
 
-  const environment_risks = raw.environment_risks.map(cleanRisk);
-  const bio_site_risks = raw.bio_site_risks.map(cleanRisk);
+  const { environment: environment_risks, bio: bio_site_risks } = applyStableRisks(
+    { environment: raw.environment_risks.map(cleanRisk), bio: raw.bio_site_risks.map(cleanRisk) },
+    context.fixed ?? {},
+  );
   const owned_count = packing.filter((p) => p.owned).length;
   const total_count = packing.length;
 
