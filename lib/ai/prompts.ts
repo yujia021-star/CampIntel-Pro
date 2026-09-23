@@ -1,4 +1,4 @@
-import { NIGHTS_LABELS, type CampPlanInput, type DiaryEntry, type Gear, type PlaceRef } from "@/lib/domain";
+import { NIGHTS_LABELS, RISK_BASIS_LABELS, type CampPlanInput, type DiaryEntry, type Gear, type PlaceRef, type Risk } from "@/lib/domain";
 import type { ForecastResult } from "@/lib/weather/forecast";
 import { CONDITION_LABELS, LEVEL_LABELS, type Experience, type FeelTendency } from "@/lib/experience";
 
@@ -22,6 +22,7 @@ export const DIAGNOSIS_SYSTEM = `あなたはプロのキャンプアドバイ�
      1=ほぼ心配ない
    - 季節・地域の一般的傾向（basis=season_region）だけを根拠にするリスクは、原則3以下にする。ヒグマ生息域など特に危険が大きい場合だけ4にしてよい。
    - 「予定日が未入力」「データがない」こと自体はリスクとして挙げない（必要なら総合アドバイスで触れる）。
+   - 【確定済みのリスク】が与えられた場合、その種類（天気予報の雨・風・気温／季節・地域の一般的傾向）のリスクはアプリが出すので、environment_risks・bio_site_risks に同じ種類のリスクを書かない。それ以外（地形・地面、入力内容、日記にもとづくもの）だけを書く。確定済みのリスクは総合アドバイスと持ち物には反映する。
    - 各リスクに、何をもとに判断したかを basis で示す: forecast=【天気予報】の数値、terrain=標高・地形・地面、season_region=季節と地域の一般的な傾向、diary=過去の日記、input=ユーザーの入力内容（移動手段・同行者など）。
    - 【天気予報】がある場合、気温・降水・風のリスクは必ずその数値を根拠にし、risk の文中に数値を入れる（例:「夜間最低2℃、結露と冷え込みに注意」）。予報がない場合は forecast を使わない。
    - クマ・ハチ・虫などの生物リスクは、季節と地域の一般的な傾向として述べる（basis=season_region）。最近の出没情報や事故など、与えられていない具体的な事実は作らない。
@@ -108,6 +109,13 @@ ${days}
 - 滞在時間帯（${f.window ?? "初日12時〜翌日12時"}）: 気温${num(s.temp_min, "℃")}〜${num(s.temp_max, "℃")}、降水確率最大${num(s.precip_prob_max, "%")}、降水量合計${num(s.precip_total_mm, "mm")}、最大風速${num(s.wind_max_ms, "m/s")}、最大瞬間風速${num(s.gust_max_ms, "m/s")}`;
 }
 
+/** アプリが決めたリスク（天気・同じ場所と月の地域リスク）をプロンプト用の文章にする */
+export function fixedRisksSummary(risks: Risk[] | undefined): string {
+  if (!risks?.length) return "";
+  const lines = risks.map((r) => `- [危険度${r.severity}・${RISK_BASIS_LABELS[r.basis ?? "season_region"]}] ${r.risk}`);
+  return `\n\n【確定済みのリスク（アプリが出す。同じ種類のリスクは書かない）】\n${lines.join("\n")}`;
+}
+
 /** 経験レベルと体感のクセをプロンプト用の文章にする */
 export function experienceSummary(exp: { experience: Experience; tendency: FeelTendency | null } | null | undefined): string {
   if (!exp) return "";
@@ -128,6 +136,7 @@ export function buildDiagnosisPrompt(
     location?: PlaceRef | null;
     weather?: ForecastResult | null;
     experience?: { experience: Experience; tendency: FeelTendency | null } | null;
+    fixedRisks?: Risk[];
   } = {},
 ): string {
   const gearDesc = gears.length
@@ -154,7 +163,7 @@ export function buildDiagnosisPrompt(
 - 予定日（初日）: ${fmt(plan.planned_date)}${temps.length ? ` (${temps.join(" / ")})` : ""}
 - 移動手段: ${fmt(plan.transport)}
 - 同行者: ${fmt(plan.companions)}
-- 今回のスタイル: ${fmt(plan.style)}${forecastSummary(context.weather)}${experienceSummary(context.experience)}${diarySummary(diaries)}
+- 今回のスタイル: ${fmt(plan.style)}${forecastSummary(context.weather)}${experienceSummary(context.experience)}${fixedRisksSummary(context.fixedRisks)}${diarySummary(diaries)}
 
 【ユーザーの所持ギア一覧】
 ${gearDesc}

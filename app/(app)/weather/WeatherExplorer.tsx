@@ -9,7 +9,7 @@ import { campDayRating, type ForecastDay } from "@/lib/weather/forecast";
 const v = (x: number | null, unit: string) => (x === null ? "—" : `${x}${unit}`);
 
 /** 診断画面に場所と日付を引き継ぐリンク */
-export function diagnoseHref(place: Pick<Place, "name" | "address" | "lat" | "lon">, date: string): string {
+export function diagnoseHref(place: Pick<Place, "name" | "address" | "lat" | "lon">, date: string, nights?: number | null): string {
   const params = new URLSearchParams({
     name: place.name,
     address: place.address,
@@ -17,6 +17,7 @@ export function diagnoseHref(place: Pick<Place, "name" | "address" | "lat" | "lo
     lon: String(place.lon),
     date,
   });
+  if (nights != null) params.set("nights", String(nights));
   return `/?${params}`;
 }
 

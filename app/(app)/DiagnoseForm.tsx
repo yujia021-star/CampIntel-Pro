@@ -57,6 +57,7 @@ export function DiagnoseForm({
   diaryCount,
   initialPlace = null,
   initialDate = null,
+  initialNights = null,
   level = null,
 }: {
   gearCount: number;
@@ -64,6 +65,7 @@ export function DiagnoseForm({
   /** 天気の画面から来たときの場所と日付 */
   initialPlace?: Place | null;
   initialDate?: string | null;
+  initialNights?: number | null;
   /** 経験レベル（アドバイスの詳しさが変わる） */
   level?: { label: string; reported: boolean } | null;
 }) {
@@ -71,6 +73,9 @@ export function DiagnoseForm({
   const [planId, setPlanId] = useState<string | null>(null);
   const [resultCompanions, setResultCompanions] = useState<string | null>(null);
   const [resultTransport, setResultTransport] = useState<string | null>(null);
+  // 同じ条件の前回の診断を使い回したとき、その診断の日時
+  const [reusedAt, setReusedAt] = useState<string | null>(null);
+  const lastBody = useRef<Record<string, string> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -85,7 +90,7 @@ export function DiagnoseForm({
   // 標高・気温は場所と予定日から自動で取得して表示する（入力欄にはしない）
   const [date, setDate] = useState(() => initialDate ?? nextSaturday());
   // 泊数（0 = デイキャンプ）
-  const [nights, setNights] = useState(1);
+  const [nights, setNights] = useState(initialNights ?? 1);
   const [elevation, setElevation] = useState<number | null>(null);
   const [weather, setWeather] = useState<ForecastResult | null>(null);
   const [loadingConditions, setLoadingConditions] = useState(false);
@@ -168,13 +173,19 @@ export function DiagnoseForm({
     const nextPrefs = { transport: body.transport, companions: body.companions, style: body.style };
     savePrefs(nextPrefs);
     setPrefs(nextPrefs);
+    await diagnose(body, false);
+  }
+
+  /** force=true は「もう一度診断する」。前回の結果・地域リスクを使わずに AI に作り直してもらう */
+  async function diagnose(body: Record<string, string>, force: boolean) {
+    lastBody.current = body;
     setPending(true);
     setError(null);
     try {
       const res = await fetch("/api/diagnose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, force }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.result) {
@@ -182,6 +193,7 @@ export function DiagnoseForm({
         return;
       }
       setResult(json.result);
+      setReusedAt(json.reused_at ?? null);
       setPlanId(json.plan_id ?? null);
       setResultCompanions(body.companions || null);
       setResultTransport(body.transport || null);
@@ -411,7 +423,23 @@ export function DiagnoseForm({
 
       {!result && place && weather && <WeatherCard weather={weather} />}
 
-      <div ref={resultRef}>{result && <DiagnosisView result={result} planId={planId} campsite={campsite} companions={resultCompanions} transport={resultTransport} />}</div>
+      <div ref={resultRef}>
+        {result && reusedAt && (
+          <div className="card reused-note">
+            ♻️ {new Date(reusedAt).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}{" "}
+            と同じ条件（場所・日程・入力・マイギア・予報）なので、そのときの結果を表示しています。
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              disabled={pending}
+              onClick={() => lastBody.current && void diagnose(lastBody.current, true)}
+            >
+              🔄 もう一度診断する
+            </button>
+          </div>
+        )}
+        {result && <DiagnosisView result={result} planId={planId} campsite={campsite} companions={resultCompanions} transport={resultTransport} />}
+      </div>
     </>
   );
 }
