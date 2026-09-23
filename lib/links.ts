@@ -20,6 +20,19 @@ export function routeLinks(p: LatLon & { name?: string }) {
  * 行き先は「種類＋場所の住所」で探させるので、診断した場所の近くの施設が選ばれ、
  * Google マップの中で行き先を変えても出発地は診断した場所のまま（今いる場所にならない）。
  */
+/**
+ * 直線距離からのおおよその所要時間。道は直線の約1.3倍、車は平均時速35km（郊外・山道）、徒歩は時速4kmとみなす。
+ * 徒歩・公共交通機関の人には、歩ける距離（道のりで4km以内）だけ徒歩の時間を出す。
+ */
+export function travelEstimate(straightKm: number, transport: string | null | undefined): string {
+  const roadKm = straightKm * 1.3;
+  const round = (min: number) => (min < 10 ? Math.max(1, Math.round(min)) : Math.round(min / 5) * 5);
+  if (transport && /徒歩|公共交通|電車|バス/.test(transport)) {
+    return roadKm <= 4 ? `徒歩約${round((roadKm / 4) * 60)}分` : "徒歩圏外";
+  }
+  return `車で約${round((roadKm / 35) * 60)}分`;
+}
+
 /** 診断した場所を出発地にして、選んだ施設（座標）までの経路を Google マップで開くリンク */
 export function routeFromUrl(from: LatLon, to: LatLon): string {
   const params = new URLSearchParams({ api: "1", origin: coord(from), destination: coord(to) });
@@ -71,7 +84,10 @@ const CATEGORY: Record<NearbyKind, NearbyCategory> = {
  */
 export function nearbyCategoriesFor(companions: string | null | undefined): NearbyCategory[] {
   const c = companions ?? "";
-  const extra: NearbyKind[] = /家族|子/.test(c)
+  // 「子どもなし」にも「子」が入るので先に見る
+  const extra: NearbyKind[] = /子どもなし|子供なし/.test(c)
+    ? ["roadside", "cafe", "sightseeing"]
+    : /家族|子/.test(c)
     ? ["park", "roadside"]
     : /パートナー|夫婦|恋人/.test(c)
       ? ["cafe", "sightseeing", "roadside"]

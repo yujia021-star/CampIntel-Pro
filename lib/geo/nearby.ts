@@ -105,17 +105,21 @@ async function getJson<T>(url: string, timeoutMs: number): Promise<T> {
 }
 
 /**
- * 名前に含まれる言葉で探す種類（Overpass に届かないときに Nominatim で探す）と、
- * 受け入れる施設の種類（Nominatim の category:type。"*" はその category 全部）。
+ * Overpass に届かないときに Nominatim で探す言葉と、受け入れる施設の種類（category:type。"*" は category 全部）。
+ * 言葉は「名前に入る日本語」と「種類を表す英語の定型句（Nominatim が種類として解釈する）」の両方で探す。
  * 名前だけだと「下部温泉病院」「〇〇温泉駐車場」まで当たるので、種類で絞る。
  */
-const NAME_SEARCH: Partial<Record<NearbyKind, { word: string; types: string[] }>> = {
-  onsen: { word: "温泉", types: ["amenity:public_bath", "leisure:spa", "natural:hot_spring", "leisure:sauna"] },
-  roadside: { word: "道の駅", types: ["highway:services", "highway:rest_area", "amenity:marketplace", "shop:*", "tourism:information", "tourism:attraction"] },
-  hospital: { word: "病院", types: ["amenity:hospital", "amenity:clinic", "healthcare:*"] },
-  supermarket: { word: "スーパー", types: ["shop:supermarket"] },
-  hardware: { word: "ホームセンター", types: ["shop:doityourself", "shop:hardware"] },
-  park: { word: "公園", types: ["leisure:park", "leisure:playground"] },
+const NAME_SEARCH: Partial<Record<NearbyKind, { queries: string[]; types: string[] }>> = {
+  onsen: { queries: ["温泉", "public bath"], types: ["amenity:public_bath", "leisure:spa", "natural:hot_spring", "leisure:sauna"] },
+  roadside: { queries: ["道の駅"], types: ["highway:services", "highway:rest_area", "amenity:marketplace", "shop:*", "tourism:information", "tourism:attraction"] },
+  hospital: { queries: ["病院", "hospital"], types: ["amenity:hospital", "amenity:clinic", "healthcare:*"] },
+  supermarket: { queries: ["スーパー", "supermarket"], types: ["shop:supermarket"] },
+  hardware: { queries: ["ホームセンター", "hardware store", "DIY store"], types: ["shop:doityourself", "shop:hardware"] },
+  park: { queries: ["公園", "playground"], types: ["leisure:park", "leisure:playground"] },
+  convenience: { queries: ["convenience store", "コンビニ"], types: ["shop:convenience"] },
+  fuel: { queries: ["fuel station", "ガソリンスタンド"], types: ["amenity:fuel"] },
+  cafe: { queries: ["cafe", "カフェ"], types: ["amenity:cafe"] },
+  sightseeing: { queries: ["viewpoint", "展望"], types: ["tourism:viewpoint", "tourism:attraction"] },
 };
 
 interface NominatimItem {
@@ -156,14 +160,32 @@ function nominatimUrl(word: string, o: { lat: number; lon: number }): string {
   return `https://nominatim.openstreetmap.org/search?${params}`;
 }
 
-/** ブラウザから周辺施設を取る。取れなかったときは、どこでなぜ失敗したかを返す（画面に出して原因を見る） */
+async function searchNominatim(kind: NearbyKind, origin: { lat: number; lon: number }): Promise<NearbyPlace[]> {
+  const search = NAME_SEARCH[kind];
+  if (!search) throw new Error("no name search");
+  const lists = await Promise.allSettled(search.queries.map((q) => getJson<NominatimItem[]>(nominatimUrl(q, origin), 10000)));
+  const ok = lists.filter((r): r is PromiseFulfilledResult<NominatimItem[]> => r.status === "fulfilled");
+  if (!ok.length) throw (lists[0] as PromiseRejectedResult).reason;
+  const items = filterNominatim(ok.flatMap((r) => r.value), search.types);
+  return parseNearby(
+    items.map((x) => ({ lat: Number(x.lat), lon: Number(x.lon), tags: { name: x.name || x.display_name?.split(",")[0] } })),
+    origin,
+  );
+}
+
+/**
+ * ブラウザから周辺施設を取る。Overpass（種類で正確に探せる）と Nominatim（名前・定型句で探す）を同時に始め、
+ * Overpass が返せばそれを、だめなら Nominatim を使う。取れなかったときは、どこでなぜ失敗したかを返す。
+ */
 export async function fetchNearby(kind: NearbyKind, origin: { lat: number; lon: number }): Promise<NearbyResult> {
   const query = encodeURIComponent(nearbyQuery(kind, origin.lat, origin.lon));
   const errors: string[] = [];
+  const nominatim = NAME_SEARCH[kind] ? searchNominatim(kind, origin) : null;
+  nominatim?.catch(() => {}); // Overpass が返したときに未処理エラーにしない
   const attempts = OVERPASS_ENDPOINTS.map(async (url) => {
     const host = new URL(url).host;
     try {
-      const json = await getJson<{ elements?: OverpassElement[] }>(`${url}?data=${query}`, 12000);
+      const json = await getJson<{ elements?: OverpassElement[] }>(`${url}?data=${query}`, 10000);
       return { places: parseNearby(json.elements ?? [], origin), source: host };
     } catch (e) {
       errors.push(reason(host, e));
@@ -174,18 +196,11 @@ export async function fetchNearby(kind: NearbyKind, origin: { lat: number; lon: 
     const hit = await Promise.any(attempts);
     return { ok: true, ...hit, errors: [] };
   } catch {
-    // すべての Overpass に断られたら、名前で探せる種類だけ Nominatim で探す
+    // すべての Overpass に断られた
   }
-  const search = NAME_SEARCH[kind];
-  if (search) {
+  if (nominatim) {
     try {
-      const items = filterNominatim(await getJson<NominatimItem[]>(nominatimUrl(search.word, origin), 10000), search.types);
-      const elements = items.map((x) => ({
-        lat: Number(x.lat),
-        lon: Number(x.lon),
-        tags: { name: x.name || x.display_name?.split(",")[0] },
-      }));
-      return { ok: true, places: parseNearby(elements, origin), source: "nominatim.openstreetmap.org", errors };
+      return { ok: true, places: await nominatim, source: "nominatim.openstreetmap.org", errors };
     } catch (e) {
       errors.push(reason("nominatim.openstreetmap.org", e));
     }

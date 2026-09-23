@@ -19,6 +19,9 @@ describe("外部リンク", () => {
   it("同行者で周辺施設の並びを変える（温泉・買い出し・病院は常に出す）", () => {
     const kinds = (c: string | null) => nearbyCategoriesFor(c).map((x) => x.kind);
     expect(kinds("家族")).toContain("park");
+    expect(kinds("子どもあり")).toContain("park");
+    expect(kinds("子どもなし")).not.toContain("park");
+    expect(kinds("子どもなし")).toContain("sightseeing");
     expect(kinds("パートナー")).toContain("cafe");
     expect(kinds("ソロ")).not.toContain("park");
     for (const c of ["家族", "ソロ", null]) {
@@ -40,6 +43,16 @@ describe("外部リンク", () => {
 
   it("予約リンクはキャンプ場名で検索する", () => {
     expect(reserveLinks(" ふもとっぱら ")[0].url).toContain(encodeURIComponent("ふもとっぱら site:nap-camp.com"));
+  });
+});
+
+describe("所要時間の目安", () => {
+  it("車は道のり1.3倍・時速35km、徒歩は時速4kmで歩ける距離だけ", async () => {
+    const { travelEstimate } = await import("./links");
+    expect(travelEstimate(8.2, "車")).toBe("車で約20分");
+    expect(travelEstimate(1, null)).toBe("車で約2分");
+    expect(travelEstimate(1.5, "徒歩・公共交通機関")).toBe("徒歩約30分");
+    expect(travelEstimate(8, "徒歩・公共交通機関")).toBe("徒歩圏外");
   });
 });
 

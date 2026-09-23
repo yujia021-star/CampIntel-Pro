@@ -21,9 +21,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </button>
           </form>
         </header>
+        <BottomNav />
         {children}
       </div>
-      <BottomNav />
     </>
   );
 }

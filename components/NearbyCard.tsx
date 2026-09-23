@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { fetchNearby, type NearbyPlace } from "@/lib/geo/nearby";
-import { nearbyCategoriesFor, nearbyRouteUrl, routeFromUrl, type LatLon, type NearbyKind } from "@/lib/links";
+import { nearbyCategoriesFor, nearbyRouteUrl, routeFromUrl, travelEstimate, type LatLon, type NearbyKind } from "@/lib/links";
 
 type State =
   | { status: "loading" }
@@ -17,9 +17,11 @@ type State =
 export function NearbyCard({
   location,
   companions,
+  transport,
 }: {
   location: LatLon & { name: string; address?: string | null };
   companions?: string | null;
+  transport?: string | null;
 }) {
   const [open, setOpen] = useState<NearbyKind | null>(null);
   const [results, setResults] = useState<Partial<Record<NearbyKind, State>>>({});
@@ -82,7 +84,9 @@ export function NearbyCard({
             state.places.map((p) => (
               <a key={`${p.name}-${p.lat}`} className="nearby-item" href={routeFromUrl(location, p)} target="_blank" rel="noreferrer">
                 <span className="nearby-name">{p.name}</span>
-                <span className="muted nearby-dist">約{p.distance_km}km</span>
+                <span className="muted nearby-dist">
+                  約{p.distance_km}km・{travelEstimate(p.distance_km, transport)}
+                </span>
                 <span className="nearby-go">行き方 ›</span>
               </a>
             ))}
@@ -99,7 +103,7 @@ export function NearbyCard({
       )}
 
       <p className="hint" style={{ marginBottom: 0 }}>
-        種類を押すと近い順に候補を出します。「行き方」は「{location.name}」を出発地にして Google マップで開きます。距離は直線距離です。
+        種類を押すと近い順に候補を出します。「行き方」は「{location.name}」を出発地にして Google マップで開きます。距離は直線距離、時間は道のりを直線の1.3倍として出した目安です。
         {companions ? `同行者「${companions}」に合わせて並べています。` : ""}
         <br />
         施設データ: © OpenStreetMap contributors。営業時間などはお店の情報で確認してください。
