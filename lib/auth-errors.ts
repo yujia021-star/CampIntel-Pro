@@ -1,22 +1,18 @@
-/** Supabase Auth のエラーを、ログイン画面に出す日本語メッセージにする */
+/** Supabase Auth のログインエラーを、ログイン画面に出す日本語メッセージにする */
 export function loginErrorMessage(error: { code?: string; status?: number; message: string }): string {
   const code = error.code ?? "";
-  if (code === "over_email_send_rate_limit" || code === "over_request_rate_limit" || error.status === 429) {
-    return "メールの送信回数が上限に達しました。しばらく（最大1時間ほど）待ってから、1回だけ送ってください。";
+  if (code === "invalid_credentials") {
+    return "メールアドレスかパスワードが違います。";
   }
-  // Supabase 標準のメール送信は、プロジェクトのメンバーのアドレスにしか送れない
-  if (code === "email_address_not_authorized") {
-    return "このアドレスには Supabase 標準のメール送信で送れません。Supabase で SMTP（メール送信）の設定が必要です。";
+  // 管理画面で作るときに「Auto Confirm User」を付け忘れると、確認待ちのままになる
+  if (code === "email_not_confirmed") {
+    return "このアカウントはまだ確認されていません。Supabase の Users で「Auto Confirm User」を付けて作り直してください。";
   }
-  if (code === "email_address_invalid") {
-    return "メールアドレスの形式が正しくありません。";
+  if (code === "user_banned") {
+    return "このアカウントは利用停止になっています。";
   }
-  // allowed_emails にないアドレスは auth.users へのトリガーで拒否される
-  if (code === "unexpected_failure" || /database error saving new user/i.test(error.message)) {
-    return "このメールアドレスは招待されていません。許可リスト（allowed_emails）への登録を確認してください。";
+  if (code === "over_request_rate_limit" || error.status === 429) {
+    return "ログインの試行回数が多すぎます。数分待ってからもう一度お試しください。";
   }
-  if (code === "otp_disabled" || code === "signup_disabled") {
-    return "Supabase でメールログインが無効になっています。Authentication の設定を確認してください。";
-  }
-  return `ログインリンクを送れませんでした（${code || error.status || error.message}）。`;
+  return `ログインできませんでした（${code || error.status || error.message}）。`;
 }

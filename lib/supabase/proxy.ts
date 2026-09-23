@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
 
-const PUBLIC_PATHS = ["/login", "/auth"];
+const PUBLIC_PATHS = ["/login"];
 
 /** セッションcookieを更新し、未ログインならログイン画面へ送る。 */
 export async function updateSession(request: NextRequest) {
