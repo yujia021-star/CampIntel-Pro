@@ -8,20 +8,19 @@ import {
   CONDITIONS,
   INTERMEDIATE,
   LEVEL_LABELS,
-  PRIOR_NIGHTS,
-  PRIOR_NIGHTS_LABELS,
+  PRIOR_NIGHTS_MAX,
   TROPICAL_MIN_C,
   VETERAN,
   WINDOW_LABELS,
   type Condition,
   type Experience,
   type FeelTendency,
-  type PriorNights,
   type SelfReport,
 } from "@/lib/experience";
 
 function ReportForm({ report, onDone }: { report: SelfReport | null; onDone: () => void }) {
-  const [prior, setPrior] = useState<PriorNights>(report?.prior_nights ?? "0");
+  const [prior, setPrior] = useState<number>(report?.prior_nights ?? 0);
+  const setPriorClamped = (n: number) => setPrior(Math.max(0, Math.min(PRIOR_NIGHTS_MAX, Math.round(n) || 0)));
   const [conds, setConds] = useState<Condition[]>(report?.conditions ?? []);
   const [windows, setWindows] = useState<number[]>(report?.windows ?? []);
   const [error, setError] = useState<string | null>(null);
@@ -30,14 +29,26 @@ function ReportForm({ report, onDone }: { report: SelfReport | null; onDone: () 
 
   return (
     <div className="exp-form">
-      <label>① アプリを使う前に、泊まりのキャンプを何泊しましたか？</label>
-      <div className="choice-row" role="group">
-        {PRIOR_NIGHTS.map((p) => (
-          <button key={p} type="button" className="choice-btn" aria-pressed={prior === p} onClick={() => setPrior(p)}>
-            {PRIOR_NIGHTS_LABELS[p]}
-          </button>
-        ))}
+      <label>① アプリを使う前に、キャンプで何泊しましたか？</label>
+      <div className="stepper">
+        <button type="button" className="btn btn-secondary btn-sm" aria-label="1泊減らす" onClick={() => setPriorClamped(prior - 1)}>
+          −
+        </button>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          max={PRIOR_NIGHTS_MAX}
+          value={prior}
+          aria-label="アプリを使う前の泊数"
+          onChange={(ev) => setPriorClamped(Number(ev.target.value))}
+        />
+        <span>泊</span>
+        <button type="button" className="btn btn-secondary btn-sm" aria-label="1泊増やす" onClick={() => setPriorClamped(prior + 1)}>
+          ＋
+        </button>
       </div>
+      <p className="hint" style={{ marginTop: 2 }}>だいたいで大丈夫です。2泊した回は2と数えます（デイキャンプは数えません）。</p>
       <label>② 経験したことがあるもの（いくつでも）</label>
       <div className="chips">
         {CONDITIONS.map((c) => (

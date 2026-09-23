@@ -63,8 +63,10 @@ describe("経験レベル", () => {
   });
 
   it("自己申告を足して判定し、申告した時期は時間がたつと外れる", () => {
-    const report = { prior_nights: "10+" as const, conditions: ["rain" as const, "cold" as const, "multi" as const], windows: [0, 1, 2, 3], reported_at: TODAY };
+    const report = { prior_nights: 10, conditions: ["rain" as const, "cold" as const, "multi" as const], windows: [0, 1, 2, 3], reported_at: TODAY };
     expect(computeExperience([], report, TODAY)).toMatchObject({ level: "veteran", nights: 10, reported: true });
+    // 申告した泊数はそのまま足す（8泊なら8泊）
+    expect(computeExperience([trip("2026-09-01")], { ...report, prior_nights: 8 }, TODAY).nights).toBe(9);
     // 半年後: 申告した区間のうち新しい2つだけが直近12か月に残る
     const later = computeExperience([], report, "2027-03-23");
     expect(later.windows).toEqual([false, false, true, true]);

@@ -19,17 +19,17 @@ export const CONDITION_LABELS: Record<Condition, string> = {
 export const COLD_MAX_C = 5;
 export const TROPICAL_MIN_C = 25;
 
-export const PRIOR_NIGHTS = ["0", "1-4", "5-9", "10+"] as const;
-export type PriorNights = (typeof PRIOR_NIGHTS)[number];
-export const PRIOR_NIGHTS_LABELS: Record<PriorNights, string> = { "0": "0泊", "1-4": "1〜4泊", "5-9": "5〜9泊", "10+": "10泊以上" };
-/** 申告の幅の下限を使う（多めに見積もらない） */
-const PRIOR_NIGHTS_MIN: Record<PriorNights, number> = { "0": 0, "1-4": 1, "5-9": 5, "10+": 10 };
+/** 以前の申告は「5〜9泊」のような幅で聞いていた。その申告は幅の下限として読む */
+export const LEGACY_PRIOR_NIGHTS = ["0", "1-4", "5-9", "10+"] as const;
+export const LEGACY_PRIOR_NIGHTS_MIN: Record<(typeof LEGACY_PRIOR_NIGHTS)[number], number> = { "0": 0, "1-4": 1, "5-9": 5, "10+": 10 };
+export const PRIOR_NIGHTS_MAX = 999;
 
 export const WINDOW_LABELS = ["直近3か月", "3〜6か月前", "6〜9か月前", "9〜12か月前"] as const;
 
 /** アプリを使う前の経験の自己申告（最初に1回。あとから直せる） */
 export interface SelfReport {
-  prior_nights: PriorNights;
+  /** アプリを使う前の泊数 */
+  prior_nights: number;
   conditions: Condition[];
   /** 申告した時点から見て、泊まりで行った区間（0=直近3か月 … 3=9〜12か月前） */
   windows: number[];
@@ -105,7 +105,7 @@ export function tripConditions(t: Trip): Condition[] {
 
 export function computeExperience(trips: Trip[], report: SelfReport | null, today: string): Experience {
   const overnight = trips.filter((t) => t.nights >= 1);
-  const nights = overnight.reduce((s, t) => s + t.nights, 0) + (report ? PRIOR_NIGHTS_MIN[report.prior_nights] : 0);
+  const nights = overnight.reduce((s, t) => s + t.nights, 0) + (report?.prior_nights ?? 0);
 
   const cond = new Set<Condition>(report?.conditions ?? []);
   for (const t of overnight) for (const c of tripConditions(t)) cond.add(c);

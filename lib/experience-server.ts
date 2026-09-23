@@ -7,7 +7,9 @@ import {
   computeExperience,
   CONDITIONS,
   feelTendency,
-  PRIOR_NIGHTS,
+  LEGACY_PRIOR_NIGHTS,
+  LEGACY_PRIOR_NIGHTS_MIN,
+  PRIOR_NIGHTS_MAX,
   type Experience,
   type FeelTendency,
   type SelfReport,
@@ -18,7 +20,10 @@ import {
 export const REPORT_KEY = "campintel_experience";
 
 export const SelfReportSchema = z.object({
-  prior_nights: z.enum(PRIOR_NIGHTS),
+  prior_nights: z.union([
+    z.number().int().min(0).max(PRIOR_NIGHTS_MAX),
+    z.enum(LEGACY_PRIOR_NIGHTS).transform((band) => LEGACY_PRIOR_NIGHTS_MIN[band]),
+  ]),
   conditions: z.array(z.enum(CONDITIONS)).max(4).transform((a) => [...new Set(a)]),
   windows: z
     .array(z.number().int().min(0).max(3))
