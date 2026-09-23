@@ -20,6 +20,12 @@ export function routeLinks(p: LatLon & { name?: string }) {
  * 行き先は「種類＋場所の住所」で探させるので、診断した場所の近くの施設が選ばれ、
  * Google マップの中で行き先を変えても出発地は診断した場所のまま（今いる場所にならない）。
  */
+/** 診断した場所を出発地にして、選んだ施設（座標）までの経路を Google マップで開くリンク */
+export function routeFromUrl(from: LatLon, to: LatLon): string {
+  const params = new URLSearchParams({ api: "1", origin: coord(from), destination: coord(to) });
+  return `https://www.google.com/maps/dir/?${params}`;
+}
+
 export function nearbyRouteUrl(keyword: string, place: LatLon & { name: string; address?: string | null }): string {
   const area = place.address?.trim() || place.name;
   const params = new URLSearchParams({ api: "1", origin: coord(place), destination: `${keyword} ${area}` });
