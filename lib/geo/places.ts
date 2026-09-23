@@ -221,7 +221,7 @@ async function getJson<T>(
 // 本家が混んでいるときに備えて、ミラーを順に試す
 const OVERPASS_ENDPOINTS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 
-export async function fetchOverpass(query: string, headers: Record<string, string> = { "User-Agent": USER_AGENT }) {
+async function fetchOverpass(query: string, headers: Record<string, string>) {
   for (const url of OVERPASS_ENDPOINTS) {
     // 長い問い合わせでも弾かれないよう POST で送る
     const json = await getJson<{ elements?: OverpassElement[] }>(

@@ -38,21 +38,19 @@ export interface NearbyCategory {
   label: string;
   /** Google マップで探すときの言葉 */
   keyword: string;
-  /** 地図データ（OpenStreetMap）から名前と距離を出せるか */
-  osm: boolean;
 }
 
 const CATEGORY: Record<NearbyKind, NearbyCategory> = {
-  onsen: { kind: "onsen", icon: "♨️", label: "温泉・銭湯", keyword: "日帰り温泉", osm: true },
-  supermarket: { kind: "supermarket", icon: "🛒", label: "スーパー", keyword: "スーパー", osm: true },
-  convenience: { kind: "convenience", icon: "🏪", label: "コンビニ", keyword: "コンビニ", osm: true },
-  hardware: { kind: "hardware", icon: "🪵", label: "ホームセンター（薪・燃料）", keyword: "ホームセンター", osm: true },
-  hospital: { kind: "hospital", icon: "🏥", label: "病院", keyword: "病院", osm: true },
-  fuel: { kind: "fuel", icon: "⛽", label: "ガソリンスタンド", keyword: "ガソリンスタンド", osm: true },
-  roadside: { kind: "roadside", icon: "🛣️", label: "道の駅", keyword: "道の駅", osm: false },
-  park: { kind: "park", icon: "🛝", label: "公園・遊び場", keyword: "公園 遊具", osm: false },
-  cafe: { kind: "cafe", icon: "☕", label: "カフェ", keyword: "カフェ", osm: false },
-  sightseeing: { kind: "sightseeing", icon: "📸", label: "観光・絶景", keyword: "観光スポット", osm: false },
+  onsen: { kind: "onsen", icon: "♨️", label: "温泉・銭湯", keyword: "日帰り温泉" },
+  supermarket: { kind: "supermarket", icon: "🛒", label: "スーパー", keyword: "スーパー" },
+  convenience: { kind: "convenience", icon: "🏪", label: "コンビニ", keyword: "コンビニ" },
+  hardware: { kind: "hardware", icon: "🪵", label: "ホームセンター（薪・燃料）", keyword: "ホームセンター" },
+  hospital: { kind: "hospital", icon: "🏥", label: "病院", keyword: "病院" },
+  fuel: { kind: "fuel", icon: "⛽", label: "ガソリンスタンド", keyword: "ガソリンスタンド" },
+  roadside: { kind: "roadside", icon: "🛣️", label: "道の駅", keyword: "道の駅" },
+  park: { kind: "park", icon: "🛝", label: "公園・遊び場", keyword: "公園 遊具" },
+  cafe: { kind: "cafe", icon: "☕", label: "カフェ", keyword: "カフェ" },
+  sightseeing: { kind: "sightseeing", icon: "📸", label: "観光・絶景", keyword: "観光スポット" },
 };
 
 /**
