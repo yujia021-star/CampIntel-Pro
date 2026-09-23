@@ -4,7 +4,10 @@ import { useState } from "react";
 import { fetchNearby, type NearbyPlace } from "@/lib/geo/nearby";
 import { nearbyCategoriesFor, nearbyRouteUrl, routeFromUrl, type LatLon, type NearbyKind } from "@/lib/links";
 
-type State = { status: "loading" } | { status: "done"; places: NearbyPlace[] } | { status: "error"; errors: string[] };
+type State =
+  | { status: "loading" }
+  | { status: "done"; places: NearbyPlace[]; fallback: string[] | null }
+  | { status: "error"; errors: string[] };
 
 /**
  * 周辺施設。種類を押すと、診断した場所から近い順に候補を出し、
@@ -32,7 +35,9 @@ export function NearbyCard({
       .then((res) =>
         setResults((r) => ({
           ...r,
-          [kind]: res.ok ? { status: "done", places: res.places } : { status: "error", errors: res.errors },
+          [kind]: res.ok
+            ? { status: "done", places: res.places, fallback: res.source.startsWith("nominatim") ? res.errors : null }
+            : { status: "error", errors: res.errors },
         })),
       );
   }
@@ -81,6 +86,12 @@ export function NearbyCard({
                 <span className="nearby-go">行き方 ›</span>
               </a>
             ))}
+          {state?.status === "done" && state.fallback && (
+            // 詳しい地図データに届かず名前で探したとき。原因を見られるように小さく出す
+            <p className="muted" style={{ fontSize: "0.7rem" }}>
+              名前で探した結果です（{state.fallback.join(" / ")}）
+            </p>
+          )}
           <a href={nearbyRouteUrl(current.keyword, location)} target="_blank" rel="noreferrer" style={{ fontSize: "0.85rem" }}>
             Google マップで探す ›
           </a>

@@ -33,7 +33,7 @@ describe("周辺施設の取得", () => {
     expect(await fetchNearby("onsen", origin)).toMatchObject({ ok: true, source: "overpass.private.coffee", places: [{ name: "湯" }] });
 
     vi.stubGlobal("fetch", (url: string) =>
-      url.includes("nominatim") ? json([{ lat: "35.02", lon: "139", name: "〇〇温泉" }]) : json({}, 504),
+      url.includes("nominatim") ? json([{ lat: "35.02", lon: "139", name: "〇〇温泉", category: "amenity", type: "public_bath" }, { lat: "35.01", lon: "139", name: "〇〇温泉病院", category: "amenity", type: "hospital" }]) : json({}, 504),
     );
     expect(await fetchNearby("onsen", origin)).toMatchObject({ ok: true, source: "nominatim.openstreetmap.org", places: [{ name: "〇〇温泉" }] });
 
@@ -41,5 +41,20 @@ describe("周辺施設の取得", () => {
     const ng = await fetchNearby("convenience", origin);
     expect(ng).toEqual({ ok: false, errors: expect.arrayContaining(["overpass-api.de: 接続できない"]) });
     vi.unstubAllGlobals();
+  });
+});
+
+describe("名前で探したときの絞り込み", () => {
+  it("温泉は温泉施設だけ。病院や駐車場は外す", async () => {
+    const { filterNominatim, displayName } = await import("./nearby");
+    const items = [
+      { lat: "1", lon: "1", name: "下部温泉会館", category: "amenity", type: "public_bath" },
+      { lat: "1", lon: "1", name: "下部温泉病院", category: "amenity", type: "hospital" },
+      { lat: "1", lon: "1", name: "下部温泉郷一時駐車場", category: "amenity", type: "parking" },
+      { lat: "1", lon: "1", name: "〇〇温泉スパ", category: "leisure", type: "spa" },
+    ];
+    expect(filterNominatim(items, ["amenity:public_bath", "leisure:spa"]).map((x) => x.name)).toEqual(["下部温泉会館", "〇〇温泉スパ"]);
+    expect(filterNominatim([{ lat: "1", lon: "1", category: "healthcare", type: "clinic" }], ["healthcare:*"])).toHaveLength(1);
+    expect(displayName("あさぎり温泉;風の湯")).toBe("あさぎり温泉 / 風の湯");
   });
 });
