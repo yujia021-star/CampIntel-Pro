@@ -129,7 +129,7 @@ export function parsePhoton(features: PhotonFeature[]): Place[] {
     });
 }
 
-interface OverpassElement {
+export interface OverpassElement {
   type?: string;
   id?: number;
   lat?: number;
@@ -182,7 +182,7 @@ export function overpassQuery(core: string): string {
 }
 
 /** 2点間のおおよその距離（km） */
-function distanceKm(a: Place, b: Place): number {
+export function distanceKm(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
   const toRad = (d: number) => (d * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
   const dLon = toRad(b.lon - a.lon);
@@ -221,7 +221,7 @@ async function getJson<T>(
 // 本家が混んでいるときに備えて、ミラーを順に試す
 const OVERPASS_ENDPOINTS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 
-async function fetchOverpass(query: string, headers: Record<string, string>) {
+export async function fetchOverpass(query: string, headers: Record<string, string> = { "User-Agent": USER_AGENT }) {
   for (const url of OVERPASS_ENDPOINTS) {
     // 長い問い合わせでも弾かれないよう POST で送る
     const json = await getJson<{ elements?: OverpassElement[] }>(

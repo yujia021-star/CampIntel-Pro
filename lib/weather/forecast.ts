@@ -223,3 +223,56 @@ export async function fetchForecast(
     return { available: false, reason: "error", message: "天気予報を取得できませんでした。時間をおいてお試しください。" };
   }
 }
+
+// ---------------------------------------------------------------
+// エリアの2週間の見通し（日ごと）。キャンプに行く日を選ぶのに使う
+// ---------------------------------------------------------------
+
+export function outlookUrl(lat: number, lon: number): string {
+  const params = new URLSearchParams({
+    latitude: lat.toFixed(4),
+    longitude: lon.toFixed(4),
+    daily:
+      "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max",
+    timezone: "Asia/Tokyo",
+    wind_speed_unit: "ms",
+    forecast_days: String(FORECAST_MAX_DAYS),
+  });
+  return `https://api.open-meteo.com/v1/forecast?${params}`;
+}
+
+export type CampDayRating = { level: "good" | "fair" | "bad"; label: string; reason: string };
+
+/**
+ * その日がキャンプ向きかの目安（日ごとの予報から）。
+ * 雨と風を重く見る。気温は装備で対応できるので、極端なときだけ下げる。
+ */
+export function campDayRating(d: ForecastDay): CampDayRating {
+  const rain = d.precip_prob_max ?? 0;
+  const mm = d.precip_sum_mm ?? 0;
+  const wind = d.wind_max_ms ?? 0;
+  const gust = d.gust_max_ms ?? 0;
+  const bad: string[] = [];
+  if (rain >= 60 && mm >= 3) bad.push(`雨（${rain}%・${mm}mm）`);
+  if (wind >= 8 || gust >= 15) bad.push(`強風（最大${wind}m/s・瞬間${gust}m/s）`);
+  if (d.temp_min !== null && d.temp_min <= 0) bad.push(`氷点下（最低${d.temp_min}℃）`);
+  if (d.temp_max !== null && d.temp_max >= 33) bad.push(`猛暑（最高${d.temp_max}℃）`);
+  if (bad.length) return { level: "bad", label: "△ 注意", reason: bad.join("、") };
+  if (rain <= 30 && wind < 6 && gust < 12) return { level: "good", label: "◎ キャンプ日和", reason: "雨・風の心配が少ない" };
+  const fair: string[] = [];
+  if (rain > 30) fair.push(`降水確率${rain}%`);
+  if (wind >= 6 || gust >= 12) fair.push(`やや風あり（瞬間${gust}m/s）`);
+  return { level: "fair", label: "○ まずまず", reason: fair.join("、") || "大きな心配はなし" };
+}
+
+/** 2週間の見通しを取得する（サーバー側で呼ぶ）。取れなければ null */
+export async function fetchOutlook(lat: number, lon: number): Promise<ForecastDay[] | null> {
+  try {
+    const res = await fetch(outlookUrl(lat, lon), { signal: AbortSignal.timeout(8000), next: { revalidate: 1800 } });
+    if (!res.ok) throw new Error(`open-meteo ${res.status}`);
+    return parseForecast(await res.json(), todayJst()).days;
+  } catch (error) {
+    console.error("[outlook]", error);
+    return null;
+  }
+}

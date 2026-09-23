@@ -134,3 +134,26 @@ describe("滞在タイプ（デイ・連泊）", () => {
     expect(new URL(forecastUrl(35, 138, "2026-10-10", 0)).searchParams.get("end_date")).toBe("2026-10-10");
   });
 });
+
+describe("キャンプ日和の目安", () => {
+  const day = (o: Partial<import("./forecast").ForecastDay>) => ({
+    date: "2026-10-03",
+    weather: "晴れ",
+    icon: "☀️",
+    temp_max: 22,
+    temp_min: 12,
+    precip_prob_max: 10,
+    precip_sum_mm: 0,
+    wind_max_ms: 3,
+    gust_max_ms: 7,
+    ...o,
+  });
+  it("雨・風・気温で判定する", async () => {
+    const { campDayRating } = await import("./forecast");
+    expect(campDayRating(day({})).level).toBe("good");
+    expect(campDayRating(day({ precip_prob_max: 50 })).level).toBe("fair");
+    expect(campDayRating(day({ precip_prob_max: 80, precip_sum_mm: 12 })).level).toBe("bad");
+    expect(campDayRating(day({ gust_max_ms: 16 })).reason).toContain("強風");
+    expect(campDayRating(day({ temp_min: -2 })).level).toBe("bad");
+  });
+});
