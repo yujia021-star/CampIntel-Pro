@@ -15,7 +15,7 @@ import {
   type Risk,
   type SiteConditions,
 } from "@/lib/domain";
-import { hasAffiliate, reserveLinks, shopLinks } from "@/lib/links";
+import { hasAffiliate, reserveLinks, routeLinks, shopLinks } from "@/lib/links";
 
 const PRIORITY_ORDER: Record<Priority, number> = { must: 0, recommended: 1, optional: 2 };
 
@@ -86,9 +86,17 @@ function PlaceCard({ result }: { result: DiagnosisResult }) {
               場所を選ばずに診断したため、名前から自動で選んだ場所です。違う場合は「場所を検索」で候補から選び直してください。
             </div>
           )}
-          <a href={`https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lon}`} target="_blank" rel="noreferrer">
-            🗺️ 地図で確認
-          </a>
+          <div className="link-row">
+            <a className="link-chip" href={`https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lon}`} target="_blank" rel="noreferrer">
+              🗺️ 地図で確認
+            </a>
+            <a className="link-chip" href={routeLinks(loc).google} target="_blank" rel="noreferrer">
+              🚗 Googleマップで行き方
+            </a>
+            <a className="link-chip" href={routeLinks(loc).apple} target="_blank" rel="noreferrer">
+              🍎 Appleマップで行き方
+            </a>
+          </div>
         </div>
       )}
       {result.stay && <ConditionRow label="滞在" value={stayText(result.stay)} source={null} />}

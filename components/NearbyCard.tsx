@@ -5,7 +5,7 @@ import type { NearbyPlace } from "@/lib/geo/nearby";
 import { mapsSearchUrl, nearbyCategoriesFor, routeLinks, type LatLon } from "@/lib/links";
 
 /**
- * 地図アプリでの行き方と、周辺施設（温泉・買い出しなど）。
+ * 周辺施設（温泉・買い出しなど）。地図アプリでの行き方は「診断した場所と条件」に出す。
  * 施設の名前と距離は OpenStreetMap から取る。取れないとき（共有ページ・通信エラー）は
  * 地図アプリで探すリンクだけを出す。
  */
@@ -20,7 +20,6 @@ export function NearbyCard({
 }) {
   const [places, setPlaces] = useState<NearbyPlace[] | null>(null);
   const [loading, setLoading] = useState(fetchNames);
-  const route = routeLinks(location);
   const categories = nearbyCategoriesFor(companions);
 
   useEffect(() => {
@@ -38,15 +37,7 @@ export function NearbyCard({
 
   return (
     <div className="card">
-      <h2>🗺️ 行き方と周辺施設</h2>
-      <div className="link-row">
-        <a className="link-chip" href={route.google} target="_blank" rel="noreferrer">
-          🚗 Googleマップで行き方
-        </a>
-        <a className="link-chip" href={route.apple} target="_blank" rel="noreferrer">
-          🍎 Appleマップで行き方
-        </a>
-      </div>
+      <h2>♨️ 周辺施設</h2>
       {companions && <p className="hint">同行者「{companions}」に合わせて並べています。</p>}
       {categories.map((c) => {
         const items = (places ?? []).filter((p) => p.kind === c.kind);
