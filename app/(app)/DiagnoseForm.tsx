@@ -16,11 +16,32 @@ const OPTIONS = {
   companions: ["ソロ", "友人", "家族", "パートナー"],
 };
 
-function Suggest({ id, label, name, options }: { id: string; label: string; name: string; options: string[] }) {
+function Suggest({
+  id,
+  label,
+  name,
+  options,
+  defaultValue,
+  placeholder = "選択または入力",
+}: {
+  id: string;
+  label: string;
+  name: string;
+  options: string[];
+  defaultValue?: string;
+  placeholder?: string;
+}) {
   return (
     <div className="field">
       <label htmlFor={id}>{label}</label>
-      <input id={id} name={name} list={`${id}-list`} placeholder="選択または入力" autoComplete="off" />
+      <input
+        id={id}
+        name={name}
+        list={`${id}-list`}
+        placeholder={placeholder}
+        autoComplete="off"
+        defaultValue={defaultValue}
+      />
       <datalist id={`${id}-list`}>
         {options.map((o) => (
           <option key={o} value={o} />
@@ -28,6 +49,26 @@ function Suggest({ id, label, name, options }: { id: string; label: string; name
       </datalist>
     </div>
   );
+}
+
+// 移動手段・同行者・スタイルは毎回ほぼ同じなので、この端末に前回の値を覚えておく
+const PREFS_KEY = "campintel:plan-prefs";
+type Prefs = { transport?: string; companions?: string; style?: string };
+
+function loadPrefs(): Prefs {
+  try {
+    return JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}") as Prefs;
+  } catch {
+    return {};
+  }
+}
+
+function savePrefs(prefs: Prefs) {
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+  } catch {
+    // 保存できなくても診断には影響しない
+  }
 }
 
 const mapUrl = (p: { lat: number; lon: number }) => `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lon}`;
@@ -45,14 +86,18 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
   const [searchError, setSearchError] = useState<string | null>(null);
   const [place, setPlace] = useState<Place | null>(null);
 
-  // 予定日・標高・気温は、場所と日付から自動で入る（手で書き換えたらそれを優先）
+  // 標高・気温は場所と予定日から自動で取得して表示する（入力欄にはしない）
   const [date, setDate] = useState("");
-  const [elevation, setElevation] = useState("");
-  const [low, setLow] = useState("");
-  const [high, setHigh] = useState("");
-  const edited = useRef({ elevation: false, low: false, high: false });
+  const [elevation, setElevation] = useState<number | null>(null);
   const [weather, setWeather] = useState<ForecastResult | null>(null);
   const [loadingConditions, setLoadingConditions] = useState(false);
+  const [prefs, setPrefs] = useState<Prefs | null>(null);
+
+  useEffect(() => {
+    // localStorage はブラウザでしか読めないので、表示後に読み込む
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPrefs(loadPrefs());
+  }, []);
 
   async function search() {
     const q = campsite.trim();
@@ -80,6 +125,7 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
     setPlace(p);
     setCampsite(p.name);
     setCandidates(null);
+    setResult(null);
   }
 
   // 場所か日付が変わったら、標高と天気予報を取り直す
@@ -94,15 +140,13 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
         const res = await fetch(`/api/conditions?${params}`, { signal: controller.signal });
         const json = await res.json();
         if (!res.ok) throw new Error();
-        if (!edited.current.elevation) setElevation(json.elevation_m == null ? "" : String(json.elevation_m));
-        const w = json.forecast as ForecastResult;
-        setWeather(w);
-        if (w.available) {
-          if (!edited.current.low && w.forecast.stay.temp_min !== null) setLow(String(w.forecast.stay.temp_min));
-          if (!edited.current.high && w.forecast.stay.temp_max !== null) setHigh(String(w.forecast.stay.temp_max));
-        }
+        setElevation(json.elevation_m ?? null);
+        setWeather(json.forecast as ForecastResult);
       } catch (e) {
-        if ((e as Error).name !== "AbortError") setWeather(null);
+        if ((e as Error).name !== "AbortError") {
+          setElevation(null);
+          setWeather(null);
+        }
       } finally {
         if (!controller.signal.aborted) setLoadingConditions(false);
       }
@@ -112,7 +156,10 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const body = Object.fromEntries(new FormData(e.currentTarget).entries());
+    const body = Object.fromEntries(new FormData(e.currentTarget).entries()) as Record<string, string>;
+    const nextPrefs = { transport: body.transport, companions: body.companions, style: body.style };
+    savePrefs(nextPrefs);
+    setPrefs(nextPrefs);
     setPending(true);
     setError(null);
     try {
@@ -153,7 +200,11 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
               value={campsite}
               onChange={(e) => {
                 setCampsite(e.target.value);
-                if (place && e.target.value !== place.name) setPlace(null);
+                if (place && e.target.value !== place.name) {
+                  setPlace(null);
+                  setWeather(null);
+                  setElevation(null);
+                }
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -205,78 +256,86 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
             </div>
           )}
           {!place && !candidates && (
-            <div className="hint">検索して場所を選ぶと、標高と天気予報が自動で入ります（選ばなくても診断できます）</div>
+            <div className="hint">検索して場所を選ぶと、標高と天気予報を自動で取得します（選ばなくても診断できます）</div>
           )}
         </div>
 
-        <div className="row">
-          <div className="field">
-            <label htmlFor="planned_date">予定日</label>
-            <input id="planned_date" name="planned_date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          </div>
-          <div className="field">
-            <label htmlFor="elevation_m">標高 (m)</label>
-            <input
-              id="elevation_m"
-              name="elevation_m"
-              type="number"
-              inputMode="numeric"
-              step="1"
-              placeholder="例: 850"
-              value={elevation}
-              onChange={(e) => {
-                edited.current.elevation = true;
-                setElevation(e.target.value);
-              }}
-            />
-          </div>
-        </div>
-        <div className="row">
-          <div className="field">
-            <label htmlFor="expected_low_c">予想最低気温 (℃)</label>
-            <input
-              id="expected_low_c"
-              name="expected_low_c"
-              type="number"
-              inputMode="decimal"
-              step="0.1"
-              value={low}
-              onChange={(e) => {
-                edited.current.low = true;
-                setLow(e.target.value);
-              }}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="expected_high_c">予想最高気温 (℃)</label>
-            <input
-              id="expected_high_c"
-              name="expected_high_c"
-              type="number"
-              inputMode="decimal"
-              step="0.1"
-              value={high}
-              onChange={(e) => {
-                edited.current.high = true;
-                setHigh(e.target.value);
-              }}
-            />
-          </div>
-        </div>
-        {loadingConditions && <div className="hint">標高と天気予報を取得中…</div>}
-
-        <div className="row">
-          <Suggest id="terrain" name="terrain" label="地形" options={OPTIONS.terrain} />
-          <Suggest id="ground" name="ground" label="地面の性質" options={OPTIONS.ground} />
-        </div>
-        <div className="row">
-          <Suggest id="transport" name="transport" label="移動手段" options={OPTIONS.transport} />
-          <Suggest id="companions" name="companions" label="同行者" options={OPTIONS.companions} />
-        </div>
         <div className="field">
-          <label htmlFor="style">スタイル</label>
-          <input id="style" name="style" maxLength={100} placeholder="例: まったり焚き火読書 / フリーサイト" />
+          <label htmlFor="planned_date">予定日</label>
+          <input
+            id="planned_date"
+            name="planned_date"
+            type="date"
+            value={date}
+            onChange={(e) => {
+              setDate(e.target.value);
+              setResult(null);
+            }}
+          />
         </div>
+
+        {place && (
+          <div className="auto-conditions">
+            <div className="cond-row" style={{ borderTop: "none" }}>
+              <span className="cond-label">標高</span>
+              <span>
+                {loadingConditions ? "取得中…" : elevation !== null ? `${elevation}m` : "不明"}
+                {elevation !== null && <span className="basis">国土地理院</span>}
+              </span>
+            </div>
+            <div className="cond-row">
+              <span className="cond-label">気温（滞在中）</span>
+              <span>
+                {loadingConditions
+                  ? "取得中…"
+                  : weather?.available
+                    ? `${weather.forecast.stay.temp_min ?? "?"}〜${weather.forecast.stay.temp_max ?? "?"}℃`
+                    : "予定日を入れると表示"}
+                {weather?.available && <span className="basis">天気予報</span>}
+              </span>
+            </div>
+            <div className="hint">地形・地面は、診断のときに場所からAIが推定します</div>
+          </div>
+        )}
+
+        <details className="more">
+          <summary>詳しく入力（任意）: 移動手段・同行者・スタイル・地形・地面</summary>
+          {prefs && (
+            <div key={JSON.stringify(prefs)}>
+              <div className="row">
+                <Suggest
+                  id="transport"
+                  name="transport"
+                  label="移動手段"
+                  options={OPTIONS.transport}
+                  defaultValue={prefs.transport}
+                />
+                <Suggest
+                  id="companions"
+                  name="companions"
+                  label="同行者"
+                  options={OPTIONS.companions}
+                  defaultValue={prefs.companions}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="style">スタイル</label>
+                <input
+                  id="style"
+                  name="style"
+                  maxLength={100}
+                  placeholder="例: まったり焚き火読書 / フリーサイト"
+                  defaultValue={prefs.style}
+                />
+              </div>
+              <div className="hint">移動手段・同行者・スタイルは前回の内容を覚えています</div>
+            </div>
+          )}
+          <div className="row">
+            <Suggest id="terrain" name="terrain" label="地形" options={OPTIONS.terrain} placeholder="空欄ならAIが推定" />
+            <Suggest id="ground" name="ground" label="地面の性質" options={OPTIONS.ground} placeholder="空欄ならAIが推定" />
+          </div>
+        </details>
 
         <p className="hint">
           マイギア {gearCount}件・日記（直近{Math.min(diaryCount, 5)}件）を診断に反映します

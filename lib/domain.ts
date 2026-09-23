@@ -100,6 +100,19 @@ export interface Risk {
   basis: RiskBasis;
 }
 
+/** 診断に使った条件と、その出どころ（入力欄の代わりに結果として表示する） */
+export interface SiteConditions {
+  elevation_m: number | null;
+  elevation_source: "gsi" | "input" | null;
+  temp_min: number | null;
+  temp_max: number | null;
+  temp_source: "forecast" | "input" | null;
+  terrain: string | null;
+  terrain_source: "input" | "ai" | null;
+  ground: string | null;
+  ground_source: "input" | "ai" | null;
+}
+
 /** 検索して選んだ場所 */
 export interface PlaceRef {
   name: string;
@@ -134,5 +147,6 @@ export interface DiagnosisResult {
   diary_count_used: number;
   /** 診断時に使った場所と天気予報（履歴で後から見返せるように保存） */
   location?: PlaceRef | null;
+  conditions?: SiteConditions | null;
   weather?: import("@/lib/weather/forecast").ForecastResult | null;
 }

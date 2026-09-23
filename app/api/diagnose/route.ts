@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       output_config: { effort: "medium", format: zodOutputFormat(DiagnosisOutputSchema) },
     });
     const raw = requireParsed(response);
-    const result = finalizeDiagnosis(raw, gears, diaries.length, { location, weather });
+    const result = finalizeDiagnosis(raw, gears, diaries.length, { location, weather, plan: parsed.plan });
 
     const { data: saved, error: saveError } = await supabase
       .from("camp_plans")
