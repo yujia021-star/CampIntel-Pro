@@ -1,8 +1,10 @@
+import { WeatherCard } from "@/components/WeatherCard";
 import { riskLevelTone, riskVerdict, severityLabel } from "@/lib/diagnosis";
 import {
   CATEGORIES,
   CATEGORY_LABELS,
   PRIORITY_LABELS,
+  RISK_BASIS_LABELS,
   type DiagnosisResult,
   type Priority,
   type Risk,
@@ -22,7 +24,10 @@ function RiskItems({ risks }: { risks: Risk[] }) {
             <span className="risk-sev">
               {sev.label}({r.severity})
             </span>
-            <span>{r.risk}</span>
+            <span>
+              {r.risk}
+              {r.basis && <span className="basis">{RISK_BASIS_LABELS[r.basis]}</span>}
+            </span>
           </div>
         );
       })}
@@ -37,6 +42,25 @@ export function DiagnosisView({ result }: { result: DiagnosisResult }) {
 
   return (
     <section>
+      {result.location && (
+        <div className="card">
+          <h2>📍 診断した場所</h2>
+          <b>{result.location.name}</b>
+          <div className="muted">{result.location.address}</div>
+          <div className="muted">
+            標高 {result.location.elevation_m != null ? `${result.location.elevation_m}m（国土地理院）` : "不明"}
+          </div>
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${result.location.lat},${result.location.lon}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            🗺️ 地図で確認
+          </a>
+        </div>
+      )}
+      {result.weather && <WeatherCard weather={result.weather} title="🌦️ 診断に使った天気予報" />}
+
       <div className="card">
         <h2>📊 総合評価</h2>
         <div className={`verdict-banner tone-${verdict.tone}`}>
@@ -94,6 +118,27 @@ export function DiagnosisView({ result }: { result: DiagnosisResult }) {
       <div className="card">
         <h2>🐾 生物・サイト特有のリスク</h2>
         <RiskItems risks={result.bio_site_risks} />
+      </div>
+
+      <div className="card">
+        <h2>ℹ️ この注意情報の根拠</h2>
+        <div className="score-caption" style={{ marginTop: 0 }}>
+          各リスクの右のラベルが、判断のもとにしたデータです。
+          <br />
+          ・<b>天気予報</b>: 上の予報の数値（Open-Meteo）
+          <br />
+          ・<b>標高・地形</b>: 国土地理院の標高と、入力した地形・地面
+          <br />
+          ・<b>季節・地域の一般的傾向</b>: AIの一般知識による目安です。最新の出没情報や事故情報は含みません
+          <br />
+          ・<b>過去の日記</b>／<b>入力内容</b>: あなたの記録と今回の入力
+          <br />
+          警報・注意報は{" "}
+          <a href="https://www.jma.go.jp/bosai/warning/" target="_blank" rel="noreferrer">
+            気象庁
+          </a>
+          、クマの出没情報は都道府県・市町村の情報、キャンプ場の最新状況は公式サイトで必ず確認してください。
+        </div>
       </div>
 
       <div className="card">

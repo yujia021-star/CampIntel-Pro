@@ -13,8 +13,8 @@ const gear = (id: string, name: string, is_base = false): Gear => ({
 });
 
 const raw = (packing: RawDiagnosis["packing_list"]): RawDiagnosis => ({
-  environment_risks: [{ risk: "冷え込み", severity: 4 }],
-  bio_site_risks: [{ risk: "ブヨ", severity: 2 }],
+  environment_risks: [{ risk: "冷え込み", severity: 4, basis: "forecast" }],
+  bio_site_risks: [{ risk: "ブヨ", severity: 2, basis: "made_up" }],
   recommended_tags: ["#防寒", "防寒", " Rain "],
   packing_list: packing,
   overall_advice: " アドバイス ",
@@ -77,10 +77,24 @@ describe("finalizeDiagnosis", () => {
     expect(r.diary_count_used).toBe(3);
   });
 
+  it("不明な根拠は一般的傾向として扱う", () => {
+    const r = finalizeDiagnosis(raw([]), [], 0);
+    expect(r.environment_risks[0].basis).toBe("forecast");
+    expect(r.bio_site_risks[0].basis).toBe("season_region");
+  });
+
+  it("場所と天気予報を結果に残す", () => {
+    const location = { name: "x", address: "y", lat: 35, lon: 138, elevation_m: 800 };
+    const weather = { available: false as const, reason: "no_date" as const, message: "" };
+    const r = finalizeDiagnosis(raw([]), [], 0, { location, weather });
+    expect(r.location).toEqual(location);
+    expect(r.weather).toEqual(weather);
+  });
+
   it("severity を1〜5に丸め、タグを正規化する", () => {
     const input = raw([]);
-    input.environment_risks = [{ risk: "a", severity: 9 }];
-    input.bio_site_risks = [{ risk: "c", severity: 0 }];
+    input.environment_risks = [{ risk: "a", severity: 9, basis: "terrain" }];
+    input.bio_site_risks = [{ risk: "c", severity: 0, basis: "diary" }];
     const r = finalizeDiagnosis(input, [], 0);
     expect(r.environment_risks[0].severity).toBe(5);
     expect(r.bio_site_risks[0].severity).toBe(1);
@@ -97,9 +111,9 @@ describe("risk level", () => {
     expect(computeRiskLevel([])).toBe(0);
     expect(
       computeRiskLevel([
-        { risk: "", severity: 2 },
-        { risk: "", severity: 3 },
-        { risk: "", severity: 3 },
+        { risk: "", basis: "input" as const, severity: 2 },
+        { risk: "", basis: "input" as const, severity: 3 },
+        { risk: "", basis: "input" as const, severity: 3 },
       ]),
     ).toBe(2.7);
   });

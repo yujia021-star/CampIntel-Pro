@@ -83,9 +83,31 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
   optional: "任意",
 };
 
+/** リスクの根拠（何のデータをもとに判断したか） */
+export const RISK_BASES = ["forecast", "terrain", "season_region", "diary", "input"] as const;
+export type RiskBasis = (typeof RISK_BASES)[number];
+export const RISK_BASIS_LABELS: Record<RiskBasis, string> = {
+  forecast: "天気予報",
+  terrain: "標高・地形",
+  season_region: "季節・地域の一般的傾向",
+  diary: "過去の日記",
+  input: "入力内容",
+};
+
 export interface Risk {
   risk: string;
   severity: number; // 1〜5
+  basis: RiskBasis;
+}
+
+/** 検索して選んだ場所 */
+export interface PlaceRef {
+  name: string;
+  address: string;
+  lat: number;
+  lon: number;
+  /** 国土地理院の標高（取得できたとき） */
+  elevation_m: number | null;
 }
 
 export interface PackingItem {
@@ -110,4 +132,7 @@ export interface DiagnosisResult {
   owned_count: number;
   total_count: number;
   diary_count_used: number;
+  /** 診断時に使った場所と天気予報（履歴で後から見返せるように保存） */
+  location?: PlaceRef | null;
+  weather?: import("@/lib/weather/forecast").ForecastResult | null;
 }
