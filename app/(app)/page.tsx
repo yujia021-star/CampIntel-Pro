@@ -12,6 +12,7 @@ const Prefill = z.object({
   lat: z.coerce.number().min(20).max(46),
   lon: z.coerce.number().min(122).max(154),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  nights: z.coerce.number().int().min(0).max(2).optional(),
 });
 
 export default async function DiagnosePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -39,7 +40,7 @@ export default async function DiagnosePage({ searchParams }: { searchParams: Pro
   return (
     <DiagnoseForm
       // 別の場所・日付で来たときはフォームを作り直す
-      key={initialPlace ? `${initialPlace.id}-${prefill.data?.date}` : "blank"}
+      key={initialPlace ? `${initialPlace.id}-${prefill.data?.date}-${prefill.data?.nights}` : "blank"}
       gearCount={gears.count ?? 0}
       diaryCount={diaries.count ?? 0}
       level={
@@ -52,6 +53,7 @@ export default async function DiagnosePage({ searchParams }: { searchParams: Pro
       }
       initialPlace={initialPlace}
       initialDate={prefill.success ? prefill.data.date ?? null : null}
+      initialNights={prefill.success ? prefill.data.nights ?? null : null}
     />
   );
 }

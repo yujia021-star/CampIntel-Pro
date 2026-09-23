@@ -57,6 +57,7 @@ export function DiagnoseForm({
   diaryCount,
   initialPlace = null,
   initialDate = null,
+  initialNights = null,
   level = null,
 }: {
   gearCount: number;
@@ -64,6 +65,7 @@ export function DiagnoseForm({
   /** 天気の画面から来たときの場所と日付 */
   initialPlace?: Place | null;
   initialDate?: string | null;
+  initialNights?: number | null;
   /** 経験レベル（アドバイスの詳しさが変わる） */
   level?: { label: string; reported: boolean } | null;
 }) {
@@ -88,7 +90,7 @@ export function DiagnoseForm({
   // 標高・気温は場所と予定日から自動で取得して表示する（入力欄にはしない）
   const [date, setDate] = useState(() => initialDate ?? nextSaturday());
   // 泊数（0 = デイキャンプ）
-  const [nights, setNights] = useState(1);
+  const [nights, setNights] = useState(initialNights ?? 1);
   const [elevation, setElevation] = useState<number | null>(null);
   const [weather, setWeather] = useState<ForecastResult | null>(null);
   const [loadingConditions, setLoadingConditions] = useState(false);

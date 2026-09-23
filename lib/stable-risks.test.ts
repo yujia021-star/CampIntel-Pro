@@ -79,3 +79,12 @@ describe("条件の指紋", () => {
     expect(stableStringify({ a: 1 })).not.toBe(stableStringify({ a: 2 }));
   });
 });
+
+describe("予報の変化", () => {
+  it("目安以上に変わった項目だけを出す", async () => {
+    const { forecastChanges } = await import("@/components/ForecastRecheck");
+    const s = stay({ precip_prob_max: 40, temp_min: 10 });
+    expect(forecastChanges(s, { ...s, precip_prob_max: 90, temp_min: 11 })).toEqual([{ label: "降水確率", from: "40%", to: "90%" }]);
+    expect(forecastChanges(s, s)).toEqual([]);
+  });
+});

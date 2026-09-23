@@ -332,3 +332,7 @@ button.link-chip { cursor: pointer; font: inherit; font-size: 0.85rem; }
 }
 .reused-note { font-size: 0.85rem; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .reused-note .btn { margin: 0; }
+.recheck { font-size: 0.88rem; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.recheck ul { margin: 0; padding-left: 1.2em; }
+.recheck .btn { margin: 0; }
+.recheck-changed { border-color: var(--amber); }
