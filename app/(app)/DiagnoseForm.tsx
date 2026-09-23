@@ -425,7 +425,7 @@ export function DiagnoseForm({
         {result && reusedAt && (
           <div className="card reused-note">
             ♻️ {new Date(reusedAt).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}{" "}
-            と同じ条件（場所・日程・入力・マイギア・予報）なので、そのときの結果を表示しています。AIの料金はかかっていません。
+            と同じ条件（場所・日程・入力・マイギア・予報）なので、そのときの結果を表示しています。
             <button
               type="button"
               className="btn btn-secondary btn-sm"

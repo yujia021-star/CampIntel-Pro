@@ -76,7 +76,12 @@ export async function POST(request: Request) {
     await enforceRateLimit(supabase, user.id, "diagnose");
 
     // 天気のリスクは予報の数字から決まったルールで出す。季節・地域のリスクは同じ場所・同じ月の前回の診断を使う
-    const fixedWeather = weather?.available ? weatherRisks(weather.forecast.stay, plan.nights) : null;
+    const fixedWeather = weather?.available
+      ? weatherRisks(weather.forecast.stay, plan.nights, [
+          ...weather.forecast.days.map((d) => d.weather),
+          ...weather.forecast.hours.map((h) => h.weather),
+        ])
+      : null;
     let fixedRegion: RegionRisks | null = null;
     if (location && !force) {
       const { data: previous } = await supabase

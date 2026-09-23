@@ -26,6 +26,11 @@ describe("天気のリスク（予報の数字で決まる）", () => {
     expect(weatherRisks(stay({ temp_min: 3 }), 1)[0].risk).toContain("夜の最低3℃");
     expect(weatherRisks(stay({ temp_min: 3 }), 0)[0].risk).toContain("最低3℃。防寒着");
     expect(weatherRisks(stay({ temp_min: 26, temp_max: 34 }), 1).map((r) => r.severity)).toEqual([3, 3]);
+    // 雷・雪・凍結・霧は天気の種類から
+    expect(weatherRisks(stay(), 1, ["雷雨"])[0]).toMatchObject({ severity: 4, risk: expect.stringContaining("雷") });
+    expect(weatherRisks(stay(), 1, ["大雪", "雪"]).map((r) => r.severity)).toEqual([5]);
+    expect(weatherRisks(stay(), 1, ["霧"])[0].severity).toBe(2);
+    expect(weatherRisks(stay(), 1, ["晴れ", "曇り"])).toEqual([]);
     // デイキャンプは夜の冷え込み（最低15℃以下の注意）を出さない
     expect(weatherRisks(stay({ temp_min: 14 }), 0)).toEqual([]);
   });

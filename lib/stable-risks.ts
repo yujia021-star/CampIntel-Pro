@@ -7,9 +7,18 @@ import type { Forecast } from "@/lib/weather/forecast";
 
 const RAIN_EXTREME_MM = 50;
 
-/** 予報の数字から天気のリスクを出す。危険度の目安はプロンプト（DIAGNOSIS_SYSTEM）と同じ */
-export function weatherRisks(stay: Forecast["stay"], nights: number): Risk[] {
+/**
+ * 予報の数字から天気のリスクを出す。危険度の目安はプロンプト（DIAGNOSIS_SYSTEM）と同じ。
+ * 数字だけでは分からない雷・雪・凍結・霧は、滞在中の天気（labels: 「雷雨」「大雪」など）から出す。
+ */
+export function weatherRisks(stay: Forecast["stay"], nights: number, labels: string[] = []): Risk[] {
   const out: Risk[] = [];
+  const has = (re: RegExp) => labels.some((l) => re.test(l));
+  if (has(/雷/)) out.push({ risk: "雷雨の予報。落雷に備え、車や建物にすぐ避難できるように", severity: 4, basis: "forecast" });
+  if (has(/大雪|強いにわか雪/)) out.push({ risk: "大雪の予報。道路の通行止めやテントの積雪に注意", severity: 5, basis: "forecast" });
+  else if (has(/雪/)) out.push({ risk: "雪の予報。スタッドレスタイヤ・チェーンと雪対策を", severity: 4, basis: "forecast" });
+  if (has(/着氷/)) out.push({ risk: "着氷性の雨・霧の予報。路面やテントの凍結に注意", severity: 4, basis: "forecast" });
+  else if (has(/^霧$/)) out.push({ risk: "霧の予報。視界が悪くなるので運転と夜の移動に注意", severity: 2, basis: "forecast" });
   const p = stay.precip_prob_max;
   const mm = stay.precip_total_mm ?? 0;
   if (p !== null) {
