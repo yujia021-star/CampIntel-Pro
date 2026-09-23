@@ -55,7 +55,7 @@ export function parseNearby(elements: OverpassElement[], origin: { lat: number; 
     const lon = e.lon ?? e.center?.lon;
     const name = e.tags?.["name:ja"] ?? e.tags?.name;
     if (lat == null || lon == null || !name) continue;
-    all.push({ name, lat, lon, distance_km: Math.round(distanceKm(origin, { lat, lon }) * 10) / 10 });
+    all.push({ name: displayName(name), lat, lon, distance_km: Math.round(distanceKm(origin, { lat, lon }) * 10) / 10 });
   }
   all.sort((a, b) => a.distance_km - b.distance_km);
   const out: NearbyPlace[] = [];
@@ -74,7 +74,9 @@ const OVERPASS_ENDPOINTS = [
   "https://overpass.kumi.systems/api/interpreter",
 ];
 
-export type NearbyResult = { ok: true; places: NearbyPlace[]; source: string } | { ok: false; errors: string[] };
+export type NearbyResult =
+  | { ok: true; places: NearbyPlace[]; source: string; errors: string[] }
+  | { ok: false; errors: string[] };
 
 function reason(host: string, e: unknown): string {
   const name = (e as Error)?.name;
@@ -102,21 +104,49 @@ async function getJson<T>(url: string, timeoutMs: number): Promise<T> {
   }
 }
 
-/** 名前に含まれる言葉で探す種類（Overpass に届かないときに Nominatim で探す） */
-const NAME_WORDS: Partial<Record<NearbyKind, string>> = {
-  onsen: "温泉",
-  roadside: "道の駅",
-  hospital: "病院",
-  supermarket: "スーパー",
-  hardware: "ホームセンター",
-  park: "公園",
+/**
+ * 名前に含まれる言葉で探す種類（Overpass に届かないときに Nominatim で探す）と、
+ * 受け入れる施設の種類（Nominatim の category:type。"*" はその category 全部）。
+ * 名前だけだと「下部温泉病院」「〇〇温泉駐車場」まで当たるので、種類で絞る。
+ */
+const NAME_SEARCH: Partial<Record<NearbyKind, { word: string; types: string[] }>> = {
+  onsen: { word: "温泉", types: ["amenity:public_bath", "leisure:spa", "natural:hot_spring", "leisure:sauna"] },
+  roadside: { word: "道の駅", types: ["highway:services", "highway:rest_area", "amenity:marketplace", "shop:*", "tourism:information", "tourism:attraction"] },
+  hospital: { word: "病院", types: ["amenity:hospital", "amenity:clinic", "healthcare:*"] },
+  supermarket: { word: "スーパー", types: ["shop:supermarket"] },
+  hardware: { word: "ホームセンター", types: ["shop:doityourself", "shop:hardware"] },
+  park: { word: "公園", types: ["leisure:park", "leisure:playground"] },
 };
+
+interface NominatimItem {
+  lat: string;
+  lon: string;
+  name?: string;
+  display_name?: string;
+  category?: string;
+  type?: string;
+}
+
+/** Nominatim の結果を、その種類の施設だけに絞る */
+export function filterNominatim(items: NominatimItem[], types: string[]): NominatimItem[] {
+  return items.filter((x) => types.some((t) => t === `${x.category}:${x.type}` || t === `${x.category}:*`));
+}
+
+/** 「あさぎり温泉;風の湯」のように複数の名前が入っていたら見やすくする */
+export function displayName(name: string): string {
+  return name
+    .split(";")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join(" / ");
+}
 
 /** Nominatim（OpenStreetMap の検索）で、場所の周り約15kmの範囲を名前の言葉で探す */
 function nominatimUrl(word: string, o: { lat: number; lon: number }): string {
   const d = 0.15;
   const params = new URLSearchParams({
     q: word,
+    addressdetails: "0",
     format: "jsonv2",
     limit: "20",
     bounded: "1",
@@ -142,20 +172,20 @@ export async function fetchNearby(kind: NearbyKind, origin: { lat: number; lon: 
   });
   try {
     const hit = await Promise.any(attempts);
-    return { ok: true, ...hit };
+    return { ok: true, ...hit, errors: [] };
   } catch {
     // すべての Overpass に断られたら、名前で探せる種類だけ Nominatim で探す
   }
-  const word = NAME_WORDS[kind];
-  if (word) {
+  const search = NAME_SEARCH[kind];
+  if (search) {
     try {
-      const items = await getJson<{ lat: string; lon: string; name?: string; display_name?: string }[]>(nominatimUrl(word, origin), 10000);
+      const items = filterNominatim(await getJson<NominatimItem[]>(nominatimUrl(search.word, origin), 10000), search.types);
       const elements = items.map((x) => ({
         lat: Number(x.lat),
         lon: Number(x.lon),
         tags: { name: x.name || x.display_name?.split(",")[0] },
       }));
-      return { ok: true, places: parseNearby(elements, origin), source: "nominatim.openstreetmap.org" };
+      return { ok: true, places: parseNearby(elements, origin), source: "nominatim.openstreetmap.org", errors };
     } catch (e) {
       errors.push(reason("nominatim.openstreetmap.org", e));
     }
