@@ -44,3 +44,48 @@ describe("places", () => {
     expect(merged.map((p) => p.name)).toEqual(["ふもとっぱらキャンプ場", "麓", "静岡県富士宮市麓"]);
   });
 });
+
+describe("キャンプ場名の検索", () => {
+  it("キャンプ場を表す語を除いた名前の核を取り出す", async () => {
+    const { campsiteCore } = await import("./places");
+    expect(campsiteCore("柳島キャンプ場")).toBe("柳島");
+    expect(campsiteCore("ふもとっぱら オートキャンプ場")).toBe("ふもとっぱら");
+    expect(campsiteCore("ほったらかしキャンプ場")).toBe("ほったらかし");
+    expect(campsiteCore("キャンプ場")).toBeNull();
+    expect(campsiteCore("富士宮")).toBe("富士宮");
+  });
+
+  it("Overpass の問い合わせはキャンプ場タグで絞り、記号をエスケープする", async () => {
+    const { overpassQuery } = await import("./places");
+    const q = overpassQuery('a"b(c)');
+    expect(q).toContain('["tourism"~"^(camp_site|caravan_site)$"]');
+    expect(q).toContain('["name"~"a\\"b\\(c\\)"]');
+  });
+
+  it("Overpass と Photon の結果を候補にする", async () => {
+    const { parseOverpass, parsePhoton } = await import("./places");
+    expect(
+      parseOverpass([
+        { type: "way", id: 5, center: { lat: 35.31, lon: 139.4 }, tags: { name: "柳島キャンプ場", tourism: "camp_site" } },
+        { type: "node", id: 6, lat: 1, lon: 2, tags: {} },
+      ]),
+    ).toEqual([
+      { id: "osm-way-5", name: "柳島キャンプ場", address: "", lat: 35.31, lon: 139.4, kind: "キャンプ場", source: "osm" },
+    ]);
+    expect(
+      parsePhoton([
+        {
+          geometry: { coordinates: [139.4, 35.31] },
+          properties: { osm_id: 5, osm_key: "tourism", osm_value: "camp_site", name: "柳島キャンプ場", state: "神奈川県", city: "茅ヶ崎市" },
+        },
+      ])[0],
+    ).toMatchObject({ kind: "キャンプ場", address: "神奈川県 茅ヶ崎市", lat: 35.31 });
+  });
+
+  it("逆ジオコーダの結果から所在地を作る", async () => {
+    const { gsiReverseAddress } = await import("./places");
+    expect(gsiReverseAddress({ results: { muniCd: "14207", lv01Nm: "柳島" } })).toBe("神奈川県 柳島");
+    expect(gsiReverseAddress({ results: { muniCd: "01101", lv01Nm: "－" } })).toBe("北海道");
+    expect(gsiReverseAddress(null)).toBe("");
+  });
+});

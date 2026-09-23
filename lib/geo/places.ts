@@ -1,5 +1,8 @@
 // キャンプ場・地名の検索と標高の取得（サーバー側で呼ぶ）。
-// - キャンプ場などの施設名: OpenStreetMap Nominatim（© OpenStreetMap contributors）
+// - キャンプ場などの施設名（いずれも OpenStreetMap のデータ、© OpenStreetMap contributors）
+//   - Overpass API: 「キャンプ場」タグの付いた場所だけを名前で探す（キャンプ場名に強い）
+//   - Photon: あいまいな名前検索
+//   - Nominatim: 住所・施設の総合検索
 //   利用規約: アプリを識別できる User-Agent を付ける／入力のたびに呼ばない（検索ボタンで1回）
 // - 地名・住所: 国土地理院 地名検索API
 // - 標高: 国土地理院 標高API
@@ -14,6 +17,8 @@ export interface Place {
   /** 候補の種類（キャンプ場／施設／地名） */
   kind: string;
   source: "osm" | "gsi";
+  /** 場所を選ばずに診断したとき、名前から自動で選んだ場所か */
+  auto?: boolean;
 }
 
 const USER_AGENT = "campintel/1.0 (private camping planner; https://camp-intel-pro.vercel.app)";
@@ -85,6 +90,97 @@ export function parseGsi(items: GsiItem[]): Place[] {
     });
 }
 
+interface PhotonFeature {
+  geometry?: { coordinates?: [number, number] };
+  properties?: {
+    osm_id?: number;
+    osm_key?: string;
+    osm_value?: string;
+    name?: string;
+    state?: string;
+    city?: string;
+    county?: string;
+    district?: string;
+    locality?: string;
+  };
+}
+
+export function parsePhoton(features: PhotonFeature[]): Place[] {
+  return features
+    .filter((f) => f.geometry?.coordinates && f.properties?.name)
+    .map((f) => {
+      const [lon, lat] = f.geometry!.coordinates!;
+      const p = f.properties!;
+      const kind =
+        p.osm_value && CAMP_TYPES.has(p.osm_value)
+          ? "キャンプ場"
+          : p.osm_key === "tourism" || p.osm_key === "leisure" || p.osm_key === "amenity"
+            ? "施設"
+            : "地名";
+      return {
+        id: `photon-${p.osm_id ?? `${lat},${lon}`}`,
+        name: p.name!,
+        address: [p.state, p.city ?? p.county, p.district ?? p.locality].filter(Boolean).join(" "),
+        lat,
+        lon,
+        kind,
+        source: "osm" as const,
+      };
+    });
+}
+
+interface OverpassElement {
+  type?: string;
+  id?: number;
+  lat?: number;
+  lon?: number;
+  center?: { lat: number; lon: number };
+  tags?: Record<string, string | undefined>;
+}
+
+export function parseOverpass(elements: OverpassElement[]): Place[] {
+  return elements
+    .map((e) => ({ e, lat: e.lat ?? e.center?.lat, lon: e.lon ?? e.center?.lon }))
+    .filter(({ e, lat, lon }) => lat != null && lon != null && e.tags?.name)
+    .map(({ e, lat, lon }) => {
+      const t = e.tags!;
+      return {
+        id: `osm-${e.type}-${e.id}`,
+        name: t["name:ja"] ?? t.name!,
+        address: [t["addr:province"] ?? t["addr:state"], t["addr:city"], t["addr:quarter"] ?? t["addr:suburb"]]
+          .filter(Boolean)
+          .join(" "),
+        lat: lat!,
+        lon: lon!,
+        kind: "キャンプ場",
+        source: "osm" as const,
+      };
+    });
+}
+
+/**
+ * 「柳島キャンプ場」→「柳島」のように、キャンプ場を表す語を除いた名前の核を取り出す。
+ * キャンプ場タグで絞り込んでから名前で探すので、核だけで十分に当たる。
+ */
+export function campsiteCore(query: string): string | null {
+  const core = query
+    .replace(/\s+/g, "")
+    .replace(/(オート)?(キャンプ(場|サイト|フィールド|グラウンド|村|ベース)?|野営場|グランピング(場)?)$/, "")
+    .trim();
+  return core.length >= 2 ? core : null;
+}
+
+/** Overpass の正規表現で特別な意味を持つ文字をエスケープする */
+function escapeOverpassRegex(text: string): string {
+  return text.replace(/[\\.*+?^$(){}|[\]"]/g, "\\$&");
+}
+
+export function overpassQuery(core: string): string {
+  // 日本全体の範囲で、キャンプ場タグのある場所だけを名前（部分一致）で探す
+  const name = escapeOverpassRegex(core);
+  return `[out:json][timeout:8];nwr["tourism"~"^(camp_site|caravan_site)$"]["name"~"${name}"](20,122,46,154);out center tags 10;`;
+}
+
 /** 2点間のおおよその距離（km） */
 function distanceKm(a: Place, b: Place): number {
   const toRad = (d: number) => (d * Math.PI) / 180;
@@ -106,9 +202,9 @@ export function mergePlaces(osm: Place[], gsi: Place[], limit = 8): Place[] {
   return out;
 }
 
-async function getJson<T>(url: string, headers: Record<string, string> = {}): Promise<T | null> {
+async function getJson<T>(url: string, headers: Record<string, string> = {}, timeoutMs = 6000): Promise<T | null> {
   try {
-    const res = await fetch(url, { headers, signal: AbortSignal.timeout(6000) });
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) });
     if (!res.ok) throw new Error(`${new URL(url).host} ${res.status}`);
     return (await res.json()) as T;
   } catch (error) {
@@ -119,6 +215,7 @@ async function getJson<T>(url: string, headers: Record<string, string> = {}): Pr
 
 export async function searchPlaces(query: string): Promise<Place[]> {
   const q = query.trim();
+  const core = campsiteCore(q);
   const nominatim = `https://nominatim.openstreetmap.org/search?${new URLSearchParams({
     q,
     format: "jsonv2",
@@ -127,13 +224,65 @@ export async function searchPlaces(query: string): Promise<Place[]> {
     "accept-language": "ja",
     limit: "8",
   })}`;
+  // bbox で日本に絞る（Photon は国指定のパラメータがない）
+  const photon = `https://photon.komoot.io/api/?${new URLSearchParams({ q, limit: "8", bbox: "122,20,154,46" })}`;
+  const overpass = core
+    ? `https://overpass-api.de/api/interpreter?${new URLSearchParams({ data: overpassQuery(core) })}`
+    : null;
   const gsi = `https://msearch.gsi.go.jp/address-search/AddressSearch?${new URLSearchParams({ q })}`;
+  const ua = { "User-Agent": USER_AGENT, "Accept-Language": "ja" };
 
-  const [osmJson, gsiJson] = await Promise.all([
-    getJson<NominatimItem[]>(nominatim, { "User-Agent": USER_AGENT, "Accept-Language": "ja" }),
+  // どれかが落ちても他の結果で候補を出せるよう、並行して呼んで失敗は空扱いにする
+  const [overpassJson, photonJson, osmJson, gsiJson] = await Promise.all([
+    overpass ? getJson<{ elements?: OverpassElement[] }>(overpass, ua, 9000) : Promise.resolve(null),
+    getJson<{ features?: PhotonFeature[] }>(photon, ua),
+    getJson<NominatimItem[]>(nominatim, ua),
     getJson<GsiItem[]>(gsi),
   ]);
-  return mergePlaces(parseNominatim(osmJson ?? []), parseGsi((gsiJson ?? []).slice(0, 5)));
+  const pois = [
+    ...parseOverpass(overpassJson?.elements ?? []),
+    ...parsePhoton(photonJson?.features ?? []),
+    ...parseNominatim(osmJson ?? []),
+  ];
+  return fillAddresses(mergePlaces(pois, parseGsi((gsiJson ?? []).slice(0, 5))));
+}
+
+const PREFECTURES = [
+  "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県", "群馬県",
+  "埼玉県", "千葉県", "東京都", "神奈川県", "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県",
+  "岐阜県", "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県",
+  "鳥取県", "島根県", "岡山県", "広島県", "山口県", "徳島県", "香川県", "愛媛県", "高知県", "福岡県",
+  "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県",
+];
+
+/** 国土地理院の逆ジオコーダの結果（市区町村コード＋町字名）を「神奈川県 柳島」のような所在地にする */
+export function gsiReverseAddress(json: { results?: { muniCd?: string; lv01Nm?: string } } | null): string {
+  const r = json?.results;
+  if (!r?.muniCd) return "";
+  const pref = PREFECTURES[Number(r.muniCd.slice(0, 2)) - 1] ?? "";
+  const town = r.lv01Nm && r.lv01Nm !== "－" ? r.lv01Nm : "";
+  return [pref, town].filter(Boolean).join(" ");
+}
+
+/** 所在地が分からない候補（キャンプ場タグのみの場所など）に、座標から所在地を補う */
+async function fillAddresses(places: Place[]): Promise<Place[]> {
+  return Promise.all(
+    places.map(async (p) => {
+      if (p.address) return p;
+      const url = `https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?${new URLSearchParams({
+        lat: String(p.lat),
+        lon: String(p.lon),
+      })}`;
+      const address = gsiReverseAddress(await getJson(url, {}, 3000));
+      return address ? { ...p, address } : p;
+    }),
+  );
+}
+
+/** 場所を選ばずに診断したときに使う、名前からいちばん当てはまりそうな1件 */
+export async function bestPlace(query: string): Promise<Place | null> {
+  const [first] = await searchPlaces(query);
+  return first ? { ...first, auto: true } : null;
 }
 
 /** 国土地理院の標高（m）。海上・取得できない場所は null */

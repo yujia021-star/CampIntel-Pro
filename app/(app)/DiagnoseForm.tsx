@@ -71,6 +71,13 @@ function savePrefs(prefs: Prefs) {
   }
 }
 
+/** 次の土曜日（今日が土曜なら今日）を "YYYY-MM-DD" で返す。予定日の初期値に使う */
+export function nextSaturday(now = new Date()): string {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7));
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 const mapUrl = (p: { lat: number; lon: number }) => `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lon}`;
 
 export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; diaryCount: number }) {
@@ -87,7 +94,7 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
   const [place, setPlace] = useState<Place | null>(null);
 
   // 標高・気温は場所と予定日から自動で取得して表示する（入力欄にはしない）
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState(nextSaturday);
   const [elevation, setElevation] = useState<number | null>(null);
   const [weather, setWeather] = useState<ForecastResult | null>(null);
   const [loadingConditions, setLoadingConditions] = useState(false);
@@ -156,6 +163,10 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (candidates && candidates.length > 0 && !place) {
+      setError("上の候補から場所を選んでください（天気予報と標高を正しく取得するためです）。");
+      return;
+    }
     const body = Object.fromEntries(new FormData(e.currentTarget).entries()) as Record<string, string>;
     const nextPrefs = { transport: body.transport, companions: body.companions, style: body.style };
     savePrefs(nextPrefs);
@@ -256,7 +267,9 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
             </div>
           )}
           {!place && !candidates && (
-            <div className="hint">検索して場所を選ぶと、標高と天気予報を自動で取得します（選ばなくても診断できます）</div>
+            <div className="hint">
+              「場所を検索」で候補から選ぶと確実です。選ばずに診断した場合は、名前からいちばん近い場所を自動で選びます
+            </div>
           )}
         </div>
 
@@ -266,6 +279,7 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
             id="planned_date"
             name="planned_date"
             type="date"
+            required
             value={date}
             onChange={(e) => {
               setDate(e.target.value);
