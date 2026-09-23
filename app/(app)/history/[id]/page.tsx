@@ -38,7 +38,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
           {conditions.join(" / ") || "条件の入力なし"}
         </p>
       </div>
-      {plan.result ? <DiagnosisView result={plan.result} planId={plan.id} campsite={plan.campsite} companions={plan.companions} /> : <p className="muted">診断結果がありません。</p>}
+      {plan.result ? <DiagnosisView result={plan.result} planId={plan.id} campsite={plan.campsite} companions={plan.companions} transport={plan.transport} /> : <p className="muted">診断結果がありません。</p>}
     </>
   );
 }

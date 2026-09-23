@@ -4,6 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "campintel AIアドバイザー",
   description: "データ駆動のキャンプ準備・リスク分析",
+  appleWebApp: { capable: true, title: "campintel", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {

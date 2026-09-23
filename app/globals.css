@@ -45,7 +45,7 @@ body {
   background: var(--bg);
   color: var(--text);
   padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -103,6 +103,9 @@ textarea { resize: vertical; min-height: 64px; }
   border: 1px solid var(--border); background: var(--bg); color: var(--text); font-weight: 500;
   cursor: pointer; font-family: inherit;
 }
+/* アイコンを上、言葉を下にして、言葉が1文字だけ次の行に落ちないようにする */
+.choice-btn { white-space: nowrap; line-height: 1.3; }
+.choice-icon { display: block; font-size: 1.15rem; margin-bottom: 2px; }
 .choice-btn[aria-pressed="true"] { background: var(--accent); color: white; border-color: var(--accent); font-weight: 700; }
 .star-row { display: flex; gap: 4px; margin-top: 8px; }
 .star { background: none; border: none; padding: 0; font-size: 1.8rem; line-height: 1; color: var(--border); cursor: pointer; }
@@ -180,13 +183,23 @@ textarea { resize: vertical; min-height: 64px; }
 .diary-tags { font-size: 0.85rem; margin-bottom: 4px; }
 .diary-note { font-size: 0.88rem; }
 
-/* 下部ナビ */
+/* タブ（ナビ）
+ * Safari では画面下のツールバーが下端に固定した要素に重なって隠れてしまうため、上に貼り付ける。
+ * ホーム画面に追加したアプリ（standalone）では Safari のバーがないので、押しやすい画面下に出す。 */
 .nav {
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-  background: var(--card);
+  position: sticky; top: 0; z-index: 100;
+  margin: -8px -16px 16px; padding: 6px 0;
+  background: var(--bg);
   display: flex; justify-content: space-around;
-  padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+@media (display-mode: standalone) {
+  .nav {
+    position: fixed; top: auto; bottom: 0; left: 0; right: 0; margin: 0;
+    padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+    background: var(--card);
+    border-bottom: none; border-top: 1px solid var(--border);
+  }
 }
 .nav a { flex: 1; text-align: center; color: var(--muted); text-decoration: none; font-size: 0.7rem; font-weight: 600; padding: 4px 0; }
 .nav a .icon { display: block; font-size: 1.3rem; margin-bottom: 2px; }
@@ -313,3 +326,7 @@ button.link-chip { cursor: pointer; font: inherit; font-size: 0.85rem; }
 .nearby-dist { font-size: 0.8rem; white-space: nowrap; }
 .nearby-go { color: var(--accent); font-size: 0.8rem; white-space: nowrap; }
 .nearby-list > a:last-child { display: inline-block; margin-top: 8px; }
+
+@media (display-mode: standalone) {
+  body { padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+}

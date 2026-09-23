@@ -10,47 +10,17 @@ import type { Place } from "@/lib/geo/places";
 import { addDays, type ForecastResult } from "@/lib/weather/forecast";
 import { dayLabel } from "@/components/WeatherCard";
 
-// 選択肢はプロトタイプと同じ。datalist なので自由入力もできる
-const OPTIONS = {
-  terrain: ["林間", "湖畔", "高原", "海辺", "河原"],
-  ground: ["固い土", "砂地", "芝生", "岩場", "ぬかるみ"],
-  transport: ["車", "バイク", "公共交通機関", "徒歩"],
-  companions: ["ソロ", "友人", "家族", "パートナー"],
-};
+// 地形・地面は場所から AI が推定するので入力にしない
+const TRANSPORTS = ["車", "徒歩・公共交通機関"] as const;
+const TRANSPORT_ICONS: Record<(typeof TRANSPORTS)[number], string> = { 車: "🚗", "徒歩・公共交通機関": "🚶" };
+const COMPANIONS = ["子どもあり", "子どもなし"] as const;
+const COMPANION_ICONS: Record<(typeof COMPANIONS)[number], string> = { 子どもあり: "👨‍👩‍👧", 子どもなし: "🧑" };
 
-function Suggest({
-  id,
-  label,
-  name,
-  options,
-  defaultValue,
-  placeholder = "選択または入力",
-}: {
-  id: string;
-  label: string;
-  name: string;
-  options: string[];
-  defaultValue?: string;
-  placeholder?: string;
-}) {
-  return (
-    <div className="field">
-      <label htmlFor={id}>{label}</label>
-      <input
-        id={id}
-        name={name}
-        list={`${id}-list`}
-        placeholder={placeholder}
-        autoComplete="off"
-        defaultValue={defaultValue}
-      />
-      <datalist id={`${id}-list`}>
-        {options.map((o) => (
-          <option key={o} value={o} />
-        ))}
-      </datalist>
-    </div>
-  );
+/** 以前の自由入力の値を、今の選択肢に読み替える（読み替えられなければ未選択） */
+function asChoice<T extends string>(value: string | undefined, choices: readonly T[], legacy: Record<string, T> = {}): T | "" {
+  if (!value) return "";
+  if ((choices as readonly string[]).includes(value)) return value as T;
+  return legacy[value] ?? "";
 }
 
 // 移動手段・同行者・スタイルは毎回ほぼ同じなので、この端末に前回の値を覚えておく
@@ -100,6 +70,7 @@ export function DiagnoseForm({
   const [result, setResult] = useState<DiagnosisResult | null>(null);
   const [planId, setPlanId] = useState<string | null>(null);
   const [resultCompanions, setResultCompanions] = useState<string | null>(null);
+  const [resultTransport, setResultTransport] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -119,11 +90,16 @@ export function DiagnoseForm({
   const [weather, setWeather] = useState<ForecastResult | null>(null);
   const [loadingConditions, setLoadingConditions] = useState(false);
   const [prefs, setPrefs] = useState<Prefs | null>(null);
+  const [transport, setTransport] = useState<string>("");
+  const [companions, setCompanions] = useState<string>("");
 
   useEffect(() => {
     // localStorage はブラウザでしか読めないので、表示後に読み込む
+    const loaded = loadPrefs();
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPrefs(loadPrefs());
+    setPrefs(loaded);
+    setTransport(asChoice(loaded.transport, TRANSPORTS, { 公共交通機関: "徒歩・公共交通機関", 徒歩: "徒歩・公共交通機関" }));
+    setCompanions(asChoice(loaded.companions, COMPANIONS));
   }, []);
 
   async function search() {
@@ -208,6 +184,7 @@ export function DiagnoseForm({
       setResult(json.result);
       setPlanId(json.plan_id ?? null);
       setResultCompanions(body.companions || null);
+      setResultTransport(body.transport || null);
       requestAnimationFrame(() => resultRef.current?.scrollIntoView({ behavior: "smooth" }));
     } catch {
       setError("通信エラーが発生しました。");
@@ -318,7 +295,8 @@ export function DiagnoseForm({
                   setResult(null);
                 }}
               >
-                {NIGHTS_ICONS[n]} {NIGHTS_LABELS[n]}
+                <span className="choice-icon">{NIGHTS_ICONS[n]}</span>
+                {NIGHTS_LABELS[n]}
               </button>
             ))}
           </div>
@@ -369,43 +347,46 @@ export function DiagnoseForm({
           </div>
         )}
 
+        {/* 移動手段と同行者は、診断（リスク・持ち物）と周辺施設の出し分けに効くので、畳まずにタップで選ぶ */}
+        <div className="field">
+          <label>移動手段</label>
+          <div className="choice-row" role="group" aria-label="移動手段">
+            {TRANSPORTS.map((t) => (
+              <button key={t} type="button" className="choice-btn" aria-pressed={transport === t} onClick={() => setTransport(transport === t ? "" : t)}>
+                <span className="choice-icon">{TRANSPORT_ICONS[t]}</span>
+                {t}
+              </button>
+            ))}
+          </div>
+          <input type="hidden" name="transport" value={transport} />
+        </div>
+        <div className="field">
+          <label>同行者</label>
+          <div className="choice-row" role="group" aria-label="同行者">
+            {COMPANIONS.map((c) => (
+              <button key={c} type="button" className="choice-btn" aria-pressed={companions === c} onClick={() => setCompanions(companions === c ? "" : c)}>
+                <span className="choice-icon">{COMPANION_ICONS[c]}</span>
+                {c}
+              </button>
+            ))}
+          </div>
+          <input type="hidden" name="companions" value={companions} />
+          <div className="hint">移動手段・同行者は前回の選択を覚えています</div>
+        </div>
         <details className="more">
-          <summary>詳しく入力（任意）: 移動手段・同行者・スタイル・地形・地面</summary>
+          <summary>スタイル（任意）</summary>
           {prefs && (
-            <div key={JSON.stringify(prefs)}>
-              <div className="row">
-                <Suggest
-                  id="transport"
-                  name="transport"
-                  label="移動手段"
-                  options={OPTIONS.transport}
-                  defaultValue={prefs.transport}
-                />
-                <Suggest
-                  id="companions"
-                  name="companions"
-                  label="同行者"
-                  options={OPTIONS.companions}
-                  defaultValue={prefs.companions}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="style">スタイル</label>
-                <input
-                  id="style"
-                  name="style"
-                  maxLength={100}
-                  placeholder="例: まったり焚き火読書 / フリーサイト"
-                  defaultValue={prefs.style}
-                />
-              </div>
-              <div className="hint">移動手段・同行者・スタイルは前回の内容を覚えています</div>
+            <div className="field" key={JSON.stringify(prefs)}>
+              <input
+                id="style"
+                name="style"
+                maxLength={100}
+                aria-label="スタイル"
+                placeholder="例: まったり焚き火読書 / フリーサイト"
+                defaultValue={prefs.style}
+              />
             </div>
           )}
-          <div className="row">
-            <Suggest id="terrain" name="terrain" label="地形" options={OPTIONS.terrain} placeholder="空欄ならAIが推定" />
-            <Suggest id="ground" name="ground" label="地面の性質" options={OPTIONS.ground} placeholder="空欄ならAIが推定" />
-          </div>
         </details>
 
         <p className="hint">
@@ -430,7 +411,7 @@ export function DiagnoseForm({
 
       {!result && place && weather && <WeatherCard weather={weather} />}
 
-      <div ref={resultRef}>{result && <DiagnosisView result={result} planId={planId} campsite={campsite} companions={resultCompanions} />}</div>
+      <div ref={resultRef}>{result && <DiagnosisView result={result} planId={planId} campsite={campsite} companions={resultCompanions} transport={resultTransport} />}</div>
     </>
   );
 }

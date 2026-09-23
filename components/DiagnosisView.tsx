@@ -253,6 +253,7 @@ export function DiagnosisView({
   planId,
   campsite,
   companions,
+  transport,
   shared = false,
 }: {
   result: DiagnosisResult;
@@ -260,6 +261,7 @@ export function DiagnosisView({
   /** 入力したキャンプ場名（予約リンクに使う） */
   campsite?: string | null;
   companions?: string | null;
+  transport?: string | null;
   /** ログインしていない人向けの共有ページで表示するか */
   shared?: boolean;
 }) {
@@ -273,7 +275,7 @@ export function DiagnosisView({
       <PlaceCard result={result} siteName={siteName} />
       {result.weather && <WeatherCard weather={result.weather} title="🌦️ 診断に使った天気予報" />}
       {result.location && (
-        <NearbyCard location={result.location} companions={companions} />
+        <NearbyCard location={result.location} companions={companions} transport={transport} />
       )}
 
       <div className="card">
@@ -335,27 +337,14 @@ export function DiagnosisView({
       <div className="card">
         <h2>🐾 生物・サイト特有のリスク</h2>
         <RiskItems risks={result.bio_site_risks} />
-      </div>
-
-      <div className="card">
-        <h2>ℹ️ この注意情報の根拠</h2>
-        <div className="score-caption" style={{ marginTop: 0 }}>
-          各リスクの右のラベルが、判断のもとにしたデータです。
-          <br />
-          ・<b>天気予報</b>: 上の予報の数値（Open-Meteo）
-          <br />
-          ・<b>標高・地形</b>: 国土地理院の標高と、入力した地形・地面
-          <br />
-          ・<b>季節・地域の一般的傾向</b>: AIの一般知識による目安です。最新の出没情報や事故情報は含みません
-          <br />
-          ・<b>過去の日記</b>／<b>入力内容</b>: あなたの記録と今回の入力
-          <br />
-          警報・注意報は{" "}
+        {/* 根拠の説明は各リスクのラベルで足りるので、注意書きだけを短く添える */}
+        <p className="hint" style={{ marginBottom: 0 }}>
+          ラベルは判断のもとにしたデータです。「季節・地域の一般的傾向」はAIの一般知識で、最新の出没・事故情報は含みません。警報は
           <a href="https://www.jma.go.jp/bosai/warning/" target="_blank" rel="noreferrer">
             気象庁
           </a>
-          、クマの出没情報は都道府県・市町村の情報、キャンプ場の最新状況は公式サイトで必ず確認してください。
-        </div>
+          、クマの出没は自治体、キャンプ場の状況は公式サイトで確認してください。
+        </p>
       </div>
 
       <PackingCard result={result} affiliate={affiliate} />

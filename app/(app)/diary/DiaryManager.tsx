@@ -65,7 +65,8 @@ function ChoiceRow<T extends string>({
       <div className="choice-row" role="group" aria-label={label}>
         {options.map((o) => (
           <button key={o} type="button" className="choice-btn" aria-pressed={value === o} onClick={() => onChange(o)}>
-            {icons[o]} {o}
+            <span className="choice-icon">{icons[o]}</span>
+            {o}
           </button>
         ))}
       </div>
@@ -215,7 +216,8 @@ export function DiaryManager({
         <div className="choice-row" role="group" aria-label="滞在">
           {NIGHTS_OPTIONS.map((n) => (
             <button key={n} type="button" className="choice-btn" aria-pressed={nights === n} onClick={() => setNights(n)}>
-              {NIGHTS_ICONS[n]} {NIGHTS_LABELS[n]}
+              <span className="choice-icon">{NIGHTS_ICONS[n]}</span>
+              {NIGHTS_LABELS[n]}
             </button>
           ))}
         </div>
