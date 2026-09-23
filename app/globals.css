@@ -242,3 +242,33 @@ textarea { resize: vertical; min-height: 64px; }
 .detected-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--border); }
 .detected-row.off { opacity: 0.5; }
 .detected-base { display: flex; align-items: center; gap: 4px; margin: 0; flex: 0 0 auto !important; font-size: 0.8rem; color: var(--text); white-space: nowrap; }
+
+/* エリアの2週間の天気 */
+.outlook-list { display: flex; flex-direction: column; gap: 6px; }
+.outlook-day {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 12px; color: inherit; text-decoration: none;
+  border-left-width: 4px;
+}
+.outlook-day.rate-good { border-left-color: var(--green, #16a34a); }
+.outlook-day.rate-fair { border-left-color: var(--amber); }
+.outlook-day.rate-bad { border-left-color: var(--red); }
+.outlook-date { display: flex; flex-direction: column; align-items: center; min-width: 58px; font-size: 0.85rem; }
+.outlook-date .weekend { color: var(--accent); }
+.outlook-icon { font-size: 1.4rem; }
+.outlook-body { flex: 1; min-width: 0; }
+.outlook-rate { font-weight: 700; font-size: 0.9rem; }
+.outlook-go { color: var(--accent); font-size: 0.8rem; white-space: nowrap; }
+
+/* 地図・周辺施設・予約・買い物のリンク */
+.link-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+.link-chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 7px 12px; border-radius: 999px;
+  border: 1px solid var(--border); font-size: 0.85rem; color: inherit; text-decoration: none; background: var(--card);
+}
+.nearby-group { margin-top: 10px; }
+.nearby-head { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 0.9rem; }
+.nearby-item { display: flex; justify-content: space-between; gap: 8px; font-size: 0.85rem; padding: 4px 0 4px 8px; }
+.nearby-item a { white-space: nowrap; }
+.shop-links { display: inline-flex; gap: 6px; margin-left: 6px; font-size: 0.75rem; }
+.pr-label { font-size: 0.7rem; border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; color: var(--muted, #888); }

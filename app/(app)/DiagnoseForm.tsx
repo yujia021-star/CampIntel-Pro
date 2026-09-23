@@ -81,22 +81,34 @@ export function nextSaturday(now = new Date()): string {
 
 const mapUrl = (p: { lat: number; lon: number }) => `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lon}`;
 
-export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; diaryCount: number }) {
+export function DiagnoseForm({
+  gearCount,
+  diaryCount,
+  initialPlace = null,
+  initialDate = null,
+}: {
+  gearCount: number;
+  diaryCount: number;
+  /** 天気の画面から来たときの場所と日付 */
+  initialPlace?: Place | null;
+  initialDate?: string | null;
+}) {
   const [result, setResult] = useState<DiagnosisResult | null>(null);
   const [planId, setPlanId] = useState<string | null>(null);
+  const [resultCompanions, setResultCompanions] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
 
   // 場所の検索
-  const [campsite, setCampsite] = useState("");
+  const [campsite, setCampsite] = useState(initialPlace?.name ?? "");
   const [candidates, setCandidates] = useState<Place[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [place, setPlace] = useState<Place | null>(null);
+  const [place, setPlace] = useState<Place | null>(initialPlace);
 
   // 標高・気温は場所と予定日から自動で取得して表示する（入力欄にはしない）
-  const [date, setDate] = useState(nextSaturday);
+  const [date, setDate] = useState(() => initialDate ?? nextSaturday());
   // 泊数（0 = デイキャンプ）
   const [nights, setNights] = useState(1);
   const [elevation, setElevation] = useState<number | null>(null);
@@ -191,6 +203,7 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
       }
       setResult(json.result);
       setPlanId(json.plan_id ?? null);
+      setResultCompanions(body.companions || null);
       requestAnimationFrame(() => resultRef.current?.scrollIntoView({ behavior: "smooth" }));
     } catch {
       setError("通信エラーが発生しました。");
@@ -402,7 +415,7 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
 
       {!result && place && weather && <WeatherCard weather={weather} />}
 
-      <div ref={resultRef}>{result && <DiagnosisView result={result} planId={planId} />}</div>
+      <div ref={resultRef}>{result && <DiagnosisView result={result} planId={planId} campsite={campsite} companions={resultCompanions} />}</div>
     </>
   );
 }

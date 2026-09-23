@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { NearbyCard } from "@/components/NearbyCard";
+import { ShareButton } from "@/components/ShareButton";
 import { dayLabel, WeatherCard } from "@/components/WeatherCard";
 import { countBySeverity, riskVerdict, severityLabel } from "@/lib/diagnosis";
 import {
@@ -13,6 +15,7 @@ import {
   type Risk,
   type SiteConditions,
 } from "@/lib/domain";
+import { hasAffiliate, reserveLinks, shopLinks } from "@/lib/links";
 
 const PRIORITY_ORDER: Record<Priority, number> = { must: 0, recommended: 1, optional: 2 };
 
@@ -111,7 +114,23 @@ function PlaceCard({ result }: { result: DiagnosisResult }) {
   );
 }
 
-export function DiagnosisView({ result, planId }: { result: DiagnosisResult; planId?: string | null }) {
+export function DiagnosisView({
+  result,
+  planId,
+  campsite,
+  companions,
+  shared = false,
+}: {
+  result: DiagnosisResult;
+  planId?: string | null;
+  /** 入力したキャンプ場名（予約リンクに使う） */
+  campsite?: string | null;
+  companions?: string | null;
+  /** ログインしていない人向けの共有ページで表示するか */
+  shared?: boolean;
+}) {
+  const siteName = campsite?.trim() || result.location?.name || "";
+  const affiliate = hasAffiliate();
   const verdict = riskVerdict(result.risk_level);
   const counts = countBySeverity([...result.environment_risks, ...result.bio_site_risks]);
   const gapCount = result.total_count - result.owned_count;
@@ -120,6 +139,9 @@ export function DiagnosisView({ result, planId }: { result: DiagnosisResult; pla
     <section>
       <PlaceCard result={result} />
       {result.weather && <WeatherCard weather={result.weather} title="🌦️ 診断に使った天気予報" />}
+      {result.location && (
+        <NearbyCard location={result.location} companions={companions} fetchNames={!shared} />
+      )}
 
       <div className="card">
         <h2>📊 総合評価</h2>
@@ -222,7 +244,14 @@ export function DiagnosisView({ result, planId }: { result: DiagnosisResult; pla
       </div>
 
       <div className="card">
-        <h2>🎒 パッキングリスト</h2>
+        <h2>
+          🎒 パッキングリスト {affiliate && gapCount > 0 && <span className="pr-label">PR</span>}
+        </h2>
+        {gapCount > 0 && (
+          <p className="hint" style={{ marginTop: 0 }}>
+            「要準備」のものは、Amazon・楽天で探せます{affiliate ? "（リンクには広告（アフィリエイト）を含みます）" : ""}。
+          </p>
+        )}
         <div className="checklist">
           {CATEGORIES.map((cat) => {
             const items = result.packing_list
@@ -239,6 +268,15 @@ export function DiagnosisView({ result, planId }: { result: DiagnosisResult; pla
                     {p.is_base && <span className="badge badge-base">定番</span>}
                     <span className={`badge ${p.owned ? "badge-owned" : "badge-need"}`}>{p.owned ? "所持" : "要準備"}</span>
                     <span className={`badge badge-${p.priority}`}>{PRIORITY_LABELS[p.priority]}</span>
+                    {!p.owned && (
+                      <span className="shop-links">
+                        {shopLinks(p.item).map((l) => (
+                          <a key={l.label} href={l.url} target="_blank" rel="noreferrer sponsored">
+                            {l.label}
+                          </a>
+                        ))}
+                      </span>
+                    )}
                   </label>
                 ))}
               </div>
@@ -246,7 +284,27 @@ export function DiagnosisView({ result, planId }: { result: DiagnosisResult; pla
           })}
         </div>
       </div>
-      {planId && (
+      {siteName && (
+        <div className="card">
+          <h2>🏕️ 予約・空き状況</h2>
+          <div className="link-row">
+            {reserveLinks(siteName).map((l) => (
+              <a key={l.label} className="link-chip" href={l.url} target="_blank" rel="noreferrer">
+                {l.icon} {l.label}
+              </a>
+            ))}
+          </div>
+          <p className="hint" style={{ marginBottom: 0 }}>
+            予約サイトはアプリから直接予約できる仕組み（公開API）がないため、検索結果を開きます。
+          </p>
+        </div>
+      )}
+      {planId && !shared && (
+        <div className="card">
+          <ShareButton planId={planId} title={siteName || "キャンプ"} />
+        </div>
+      )}
+      {planId && !shared && (
         <div className="card" style={{ textAlign: "center" }}>
           <p className="muted" style={{ marginTop: 0 }}>
             キャンプから帰ったら、この計画の日記を書きましょう。予報と実際の体感の差が、次の診断に活かされます。
