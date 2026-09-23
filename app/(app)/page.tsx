@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { env } from "@/lib/env";
 import { LEVEL_LABELS } from "@/lib/experience";
 import { loadExperience } from "@/lib/experience-server";
 import type { Place } from "@/lib/geo/places";
@@ -43,6 +44,7 @@ export default async function DiagnosePage({ searchParams }: { searchParams: Pro
       key={initialPlace ? `${initialPlace.id}-${prefill.data?.date}-${prefill.data?.nights}` : "blank"}
       gearCount={gears.count ?? 0}
       diaryCount={diaries.count ?? 0}
+      affiliate={env.affiliateIds()}
       level={
         exp
           ? {

@@ -7,6 +7,7 @@ import { LoadingOverlay } from "@/components/Loading";
 import { WeatherCard } from "@/components/WeatherCard";
 import { NIGHTS_ICONS, NIGHTS_LABELS, NIGHTS_OPTIONS, type DiagnosisResult } from "@/lib/domain";
 import type { Place } from "@/lib/geo/places";
+import type { AffiliateIds } from "@/lib/links";
 import { addDays, type ForecastResult } from "@/lib/weather/forecast";
 import { dayLabel } from "@/components/WeatherCard";
 
@@ -59,6 +60,7 @@ export function DiagnoseForm({
   initialDate = null,
   initialNights = null,
   level = null,
+  affiliate = {},
 }: {
   gearCount: number;
   diaryCount: number;
@@ -66,6 +68,8 @@ export function DiagnoseForm({
   initialPlace?: Place | null;
   initialDate?: string | null;
   initialNights?: number | null;
+  /** アフィリエイトID（サーバーで環境変数から読んで渡す） */
+  affiliate?: AffiliateIds;
   /** 経験レベル（アドバイスの詳しさが変わる） */
   level?: { label: string; reported: boolean } | null;
 }) {
@@ -438,7 +442,7 @@ export function DiagnoseForm({
             </button>
           </div>
         )}
-        {result && <DiagnosisView result={result} planId={planId} campsite={campsite} companions={resultCompanions} transport={resultTransport} />}
+        {result && <DiagnosisView result={result} planId={planId} campsite={campsite} companions={resultCompanions} transport={resultTransport} affiliate={affiliate} />}
       </div>
     </>
   );

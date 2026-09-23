@@ -126,11 +126,11 @@ export interface ShopLink {
   url: string;
 }
 
-// アフィリエイトID（ビルド時に埋め込まれる。前後の空白は取り除く）
-const AFFILIATE_IDS = {
-  amazonTag: process.env.NEXT_PUBLIC_AMAZON_ASSOCIATE_TAG?.trim() || undefined,
-  rakutenId: process.env.NEXT_PUBLIC_RAKUTEN_AFFILIATE_ID?.trim() || undefined,
-};
+/** アフィリエイトID。サーバーで環境変数から読み、画面に渡す（lib/env.ts の affiliateIds） */
+export interface AffiliateIds {
+  amazonTag?: string;
+  rakutenId?: string;
+}
 
 /**
  * 通販サイトで探す言葉。「レインウェア（大人・子ども用）」のカッコ書きや
@@ -146,9 +146,9 @@ export function shopQuery(item: string): string {
 
 /**
  * 「要準備」のギアを探す通販リンク。
- * アフィリエイトIDが環境変数に設定されていれば、紹介リンクにする。
+ * アフィリエイトIDが渡されれば、紹介リンクにする。
  */
-export function shopLinks(item: string, ids: { amazonTag?: string; rakutenId?: string } = AFFILIATE_IDS): ShopLink[] {
+export function shopLinks(item: string, ids: AffiliateIds = {}): ShopLink[] {
   const q = encodeURIComponent(shopQuery(item));
   const amazon = `https://www.amazon.co.jp/s?k=${q}${ids.amazonTag ? `&tag=${encodeURIComponent(ids.amazonTag)}` : ""}`;
   const rakutenSearch = `https://search.rakuten.co.jp/search/mall/${q}/`;
@@ -162,6 +162,6 @@ export function shopLinks(item: string, ids: { amazonTag?: string; rakutenId?: s
 }
 
 /** アフィリエイトIDが1つでも設定されているか（「PR」表記を出すため） */
-export function hasAffiliate(ids: { amazonTag?: string; rakutenId?: string } = AFFILIATE_IDS): boolean {
+export function hasAffiliate(ids: AffiliateIds = {}): boolean {
   return Boolean(ids.amazonTag || ids.rakutenId);
 }

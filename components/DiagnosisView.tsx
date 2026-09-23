@@ -16,7 +16,7 @@ import {
   type Risk,
   type SiteConditions,
 } from "@/lib/domain";
-import { hasAffiliate, reserveLinks, routeLinks, shopLinks } from "@/lib/links";
+import { hasAffiliate, reserveLinks, routeLinks, shopLinks, type AffiliateIds } from "@/lib/links";
 
 const PRIORITY_ORDER: Record<Priority, number> = { must: 0, recommended: 1, optional: 2 };
 
@@ -143,7 +143,18 @@ function PlaceCard({ result, siteName }: { result: DiagnosisResult; siteName: st
 const byPriority = (a: PackingItem, b: PackingItem) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
 
 /** 持ち物の1行。名前が長くても、チェックボックスと名前・通販リンクが崩れないようにする */
-function PackRow({ p, showShop, note, plain }: { p: PackingItem; showShop: boolean; note?: string; plain?: boolean }) {
+function PackRow({
+  p,
+  shop,
+  note,
+  plain,
+}: {
+  p: PackingItem;
+  /** 通販リンクを出すとき、そのアフィリエイトID（なければ普通の検索リンク） */
+  shop?: AffiliateIds | null;
+  note?: string;
+  plain?: boolean;
+}) {
   return (
     <div className="pack-row">
       <label className="pack-label">
@@ -155,9 +166,9 @@ function PackRow({ p, showShop, note, plain }: { p: PackingItem; showShop: boole
           {note && <span className="muted pack-note">{note}</span>}
         </span>
       </label>
-      {showShop && (
+      {shop && (
         <span className="shop-links">
-          {shopLinks(p.item).map((l) => (
+          {shopLinks(p.item, shop).map((l) => (
             <a key={l.label} href={l.url} target="_blank" rel="noreferrer sponsored">
               {l.label}
             </a>
@@ -172,7 +183,8 @@ function PackRow({ p, showShop, note, plain }: { p: PackingItem; showShop: boole
  * 持ち物。主役は「足りないギア」。消耗品は持っていても毎回の補充・残量確認が要るので別に出す。
  * 持っている道具は出発前の荷造りチェック用なので畳んでおく。
  */
-function PackingCard({ result, affiliate }: { result: DiagnosisResult; affiliate: boolean }) {
+function PackingCard({ result, ids }: { result: DiagnosisResult; ids: AffiliateIds }) {
+  const affiliate = hasAffiliate(ids);
   const need = result.packing_list.filter((p) => !p.owned && !isConsumable(p)).sort(byPriority);
   const consumables = result.packing_list
     .filter((p) => isConsumable(p))
@@ -196,7 +208,7 @@ function PackingCard({ result, affiliate }: { result: DiagnosisResult; affiliate
           <h3 className="pack-head">🛒 用意が必要なギア（{need.length}件）</h3>
           <div className="checklist">
             {need.map((p, i) => (
-              <PackRow key={`${p.item}-${i}`} p={p} showShop />
+              <PackRow key={`${p.item}-${i}`} p={p} shop={ids} />
             ))}
           </div>
         </>
@@ -209,7 +221,7 @@ function PackingCard({ result, affiliate }: { result: DiagnosisResult; affiliate
           <h3 className="pack-head">🧻 消耗品（{consumables.length}件）</h3>
           <div className="checklist">
             {consumables.map((p, i) => (
-              <PackRow key={`${p.item}-${i}`} p={p} showShop={!p.owned} note={p.owned ? "手持ちあり・残量を確認" : undefined} />
+              <PackRow key={`${p.item}-${i}`} p={p} shop={p.owned ? null : ids} note={p.owned ? "手持ちあり・残量を確認" : undefined} />
             ))}
           </div>
         </>
@@ -235,7 +247,7 @@ function PackingCard({ result, affiliate }: { result: DiagnosisResult; affiliate
                 <div key={cat}>
                   <div className="checklist-cat">{CATEGORY_LABELS[cat]}</div>
                   {items.map((p, i) => (
-                    <PackRow key={`${p.item}-${i}`} p={p} showShop={false} plain />
+                    <PackRow key={`${p.item}-${i}`} p={p} plain />
                   ))}
                 </div>
               );
@@ -254,6 +266,7 @@ export function DiagnosisView({
   campsite,
   companions,
   transport,
+  affiliate = {},
   shared = false,
 }: {
   result: DiagnosisResult;
@@ -262,11 +275,12 @@ export function DiagnosisView({
   campsite?: string | null;
   companions?: string | null;
   transport?: string | null;
+  /** アフィリエイトID（サーバーで環境変数から読んで渡す） */
+  affiliate?: AffiliateIds;
   /** ログインしていない人向けの共有ページで表示するか */
   shared?: boolean;
 }) {
   const siteName = campsite?.trim() || result.location?.name || "";
-  const affiliate = hasAffiliate();
   const verdict = riskVerdict(result.risk_level);
   const counts = countBySeverity([...result.environment_risks, ...result.bio_site_risks]);
 
@@ -347,7 +361,7 @@ export function DiagnosisView({
         </p>
       </div>
 
-      <PackingCard result={result} affiliate={affiliate} />
+      <PackingCard result={result} ids={affiliate} />
       {planId && !shared && (
         <div className="card">
           <ShareButton planId={planId} title={siteName || "キャンプ"} />
