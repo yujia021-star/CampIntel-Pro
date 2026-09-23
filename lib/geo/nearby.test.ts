@@ -18,3 +18,28 @@ describe("周辺施設の候補", () => {
     expect(out[0].distance_km).toBe(1.1);
   });
 });
+
+describe("周辺施設の取得", () => {
+  it("どれかの Overpass が返せばそれを使い、全部だめなら Nominatim で名前から探す", async () => {
+    const { fetchNearby } = await import("./nearby");
+    const { vi } = await import("vitest");
+    const origin = { lat: 35, lon: 139 };
+    const json = (body: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(body), { status }));
+
+    const ok = vi.fn((url: string) =>
+      url.includes("private.coffee") ? json({ elements: [{ lat: 35.01, lon: 139, tags: { name: "湯" } }] }) : json({}, 429),
+    );
+    vi.stubGlobal("fetch", ok);
+    expect(await fetchNearby("onsen", origin)).toMatchObject({ ok: true, source: "overpass.private.coffee", places: [{ name: "湯" }] });
+
+    vi.stubGlobal("fetch", (url: string) =>
+      url.includes("nominatim") ? json([{ lat: "35.02", lon: "139", name: "〇〇温泉" }]) : json({}, 504),
+    );
+    expect(await fetchNearby("onsen", origin)).toMatchObject({ ok: true, source: "nominatim.openstreetmap.org", places: [{ name: "〇〇温泉" }] });
+
+    vi.stubGlobal("fetch", () => Promise.reject(new TypeError("Load failed")));
+    const ng = await fetchNearby("convenience", origin);
+    expect(ng).toEqual({ ok: false, errors: expect.arrayContaining(["overpass-api.de: 接続できない"]) });
+    vi.unstubAllGlobals();
+  });
+});

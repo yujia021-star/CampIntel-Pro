@@ -67,25 +67,98 @@ export function parseNearby(elements: OverpassElement[], origin: { lat: number; 
   return out;
 }
 
-const ENDPOINTS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+// 公開の Overpass サーバーは混雑で断られることがあるので、いくつかに同時に聞いて早く返った方を使う
+const OVERPASS_ENDPOINTS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+];
 
-/** ブラウザから周辺施設を取る。どのサーバーからも取れなければ null */
-export async function fetchNearby(kind: NearbyKind, origin: { lat: number; lon: number }): Promise<NearbyPlace[] | null> {
-  const body = new URLSearchParams({ data: nearbyQuery(kind, origin.lat, origin.lon) }).toString();
-  for (const url of ENDPOINTS) {
+export type NearbyResult = { ok: true; places: NearbyPlace[]; source: string } | { ok: false; errors: string[] };
+
+function reason(host: string, e: unknown): string {
+  const name = (e as Error)?.name;
+  if (name === "TimeoutError" || name === "AbortError") return `${host}: 時間切れ`;
+  if (e instanceof HttpError) return `${host}: ${e.status}`;
+  return `${host}: 接続できない`;
+}
+
+class HttpError extends Error {
+  constructor(public status: number) {
+    super(`HTTP ${status}`);
+  }
+}
+
+async function getJson<T>(url: string, timeoutMs: number): Promise<T> {
+  // AbortSignal.timeout は古い iPhone の Safari にないので、自前で時間切れにする
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) throw new HttpError(res.status);
+    return (await res.json()) as T;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** 名前に含まれる言葉で探す種類（Overpass に届かないときに Nominatim で探す） */
+const NAME_WORDS: Partial<Record<NearbyKind, string>> = {
+  onsen: "温泉",
+  roadside: "道の駅",
+  hospital: "病院",
+  supermarket: "スーパー",
+  hardware: "ホームセンター",
+  park: "公園",
+};
+
+/** Nominatim（OpenStreetMap の検索）で、場所の周り約15kmの範囲を名前の言葉で探す */
+function nominatimUrl(word: string, o: { lat: number; lon: number }): string {
+  const d = 0.15;
+  const params = new URLSearchParams({
+    q: word,
+    format: "jsonv2",
+    limit: "20",
+    bounded: "1",
+    viewbox: `${o.lon - d},${o.lat + d},${o.lon + d},${o.lat - d}`,
+    "accept-language": "ja",
+  });
+  return `https://nominatim.openstreetmap.org/search?${params}`;
+}
+
+/** ブラウザから周辺施設を取る。取れなかったときは、どこでなぜ失敗したかを返す（画面に出して原因を見る） */
+export async function fetchNearby(kind: NearbyKind, origin: { lat: number; lon: number }): Promise<NearbyResult> {
+  const query = encodeURIComponent(nearbyQuery(kind, origin.lat, origin.lon));
+  const errors: string[] = [];
+  const attempts = OVERPASS_ENDPOINTS.map(async (url) => {
+    const host = new URL(url).host;
     try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body,
-        signal: AbortSignal.timeout(15000),
-      });
-      if (!res.ok) continue;
-      const json = (await res.json()) as { elements?: OverpassElement[] };
-      return parseNearby(json.elements ?? [], origin);
-    } catch {
-      // 次のサーバーを試す
+      const json = await getJson<{ elements?: OverpassElement[] }>(`${url}?data=${query}`, 12000);
+      return { places: parseNearby(json.elements ?? [], origin), source: host };
+    } catch (e) {
+      errors.push(reason(host, e));
+      throw e;
+    }
+  });
+  try {
+    const hit = await Promise.any(attempts);
+    return { ok: true, ...hit };
+  } catch {
+    // すべての Overpass に断られたら、名前で探せる種類だけ Nominatim で探す
+  }
+  const word = NAME_WORDS[kind];
+  if (word) {
+    try {
+      const items = await getJson<{ lat: string; lon: string; name?: string; display_name?: string }[]>(nominatimUrl(word, origin), 10000);
+      const elements = items.map((x) => ({
+        lat: Number(x.lat),
+        lon: Number(x.lon),
+        tags: { name: x.name || x.display_name?.split(",")[0] },
+      }));
+      return { ok: true, places: parseNearby(elements, origin), source: "nominatim.openstreetmap.org" };
+    } catch (e) {
+      errors.push(reason("nominatim.openstreetmap.org", e));
     }
   }
-  return null;
+  return { ok: false, errors };
 }

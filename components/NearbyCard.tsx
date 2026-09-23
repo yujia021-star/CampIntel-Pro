@@ -4,7 +4,7 @@ import { useState } from "react";
 import { fetchNearby, type NearbyPlace } from "@/lib/geo/nearby";
 import { nearbyCategoriesFor, nearbyRouteUrl, routeFromUrl, type LatLon, type NearbyKind } from "@/lib/links";
 
-type State = { status: "loading" } | { status: "done"; places: NearbyPlace[] } | { status: "error" };
+type State = { status: "loading" } | { status: "done"; places: NearbyPlace[] } | { status: "error"; errors: string[] };
 
 /**
  * 周辺施設。種類を押すと、診断した場所から近い順に候補を出し、
@@ -27,9 +27,14 @@ export function NearbyCard({
     // 一度調べた種類はこの画面では調べ直さない
     if (results[kind]?.status === "done" || results[kind]?.status === "loading") return;
     setResults((r) => ({ ...r, [kind]: { status: "loading" } }));
-    fetchNearby(kind, location).then((places) =>
-      setResults((r) => ({ ...r, [kind]: places ? { status: "done", places } : { status: "error" } })),
-    );
+    fetchNearby(kind, location)
+      .catch((e: unknown) => ({ ok: false as const, errors: [String((e as Error)?.message ?? e)] }))
+      .then((res) =>
+        setResults((r) => ({
+          ...r,
+          [kind]: res.ok ? { status: "done", places: res.places } : { status: "error", errors: res.errors },
+        })),
+      );
   }
 
   const current = open ? categories.find((c) => c.kind === open) : null;
@@ -59,7 +64,15 @@ export function NearbyCard({
           {state?.status === "done" && state.places.length === 0 && (
             <p className="muted">地図データでは近くに見つかりませんでした。</p>
           )}
-          {state?.status === "error" && <p className="muted">候補を取得できませんでした。</p>}
+          {state?.status === "error" && (
+            <>
+              <p className="muted">候補を取得できませんでした。</p>
+              {/* 原因を見られるように、どこでなぜ失敗したかを小さく出す */}
+              <p className="muted" style={{ fontSize: "0.7rem" }}>
+                {state.errors.join(" / ")}
+              </p>
+            </>
+          )}
           {state?.status === "done" &&
             state.places.map((p) => (
               <a key={`${p.name}-${p.lat}`} className="nearby-item" href={routeFromUrl(location, p)} target="_blank" rel="noreferrer">
