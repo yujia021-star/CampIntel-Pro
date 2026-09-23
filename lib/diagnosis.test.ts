@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { computeRiskLevel, finalizeDiagnosis, riskLevelTone, riskVerdict, severityLabel, type RawDiagnosis } from "./diagnosis";
+import {
+  computeRiskLevel,
+  buildConditions,
+  countBySeverity,
+  finalizeDiagnosis,
+  riskVerdict,
+  severityLabel,
+  type RawDiagnosis,
+} from "./diagnosis";
 import type { Gear } from "./domain";
 
 const gear = (id: string, name: string, is_base = false): Gear => ({
@@ -98,7 +106,7 @@ describe("finalizeDiagnosis", () => {
     const r = finalizeDiagnosis(input, [], 0);
     expect(r.environment_risks[0].severity).toBe(5);
     expect(r.bio_site_risks[0].severity).toBe(1);
-    expect(r.risk_level).toBe(3);
+    expect(r.risk_level).toBe(5);
     expect(r.recommended_tags).toEqual(["防寒", "rain"]);
     expect(r.overall_advice).toBe("アドバイス");
     // パッキングリストが空なら準備度100%（プロトタイプと同じ）
@@ -107,31 +115,79 @@ describe("finalizeDiagnosis", () => {
 });
 
 describe("risk level", () => {
-  it("平均を小数1桁で返す", () => {
+  const risk = (severity: number) => ({ risk: "", basis: "input" as const, severity });
+
+  it("総合はいちばん高いリスク（平均で薄めない）", () => {
     expect(computeRiskLevel([])).toBe(0);
-    expect(
-      computeRiskLevel([
-        { risk: "", basis: "input" as const, severity: 2 },
-        { risk: "", basis: "input" as const, severity: 3 },
-        { risk: "", basis: "input" as const, severity: 3 },
-      ]),
-    ).toBe(2.7);
+    // 軽微が多くても、1つでも高いリスクがあれば総合も高い
+    expect(computeRiskLevel([risk(2), risk(2), risk(2), risk(2), risk(4)])).toBe(4);
+    expect(riskVerdict(computeRiskLevel([risk(2), risk(2), risk(4)])).title).toContain("警戒");
   });
 
-  it("点数ごとの判定（2未満/3未満/4未満/4以上）", () => {
+  it("点数ごとの判定", () => {
     expect(riskVerdict(0).title).toContain("問題なし");
-    expect(riskVerdict(1.9).title).toContain("問題なし");
-    expect(riskVerdict(2.0).title).toContain("軽度の注意");
-    expect(riskVerdict(3.0).title).toContain("要注意");
-    expect(riskVerdict(4.0).title).toContain("警戒");
+    expect(riskVerdict(1).title).toContain("問題なし");
+    expect(riskVerdict(2).title).toContain("軽度の注意");
+    expect(riskVerdict(3).title).toContain("要注意");
+    expect(riskVerdict(4).title).toContain("警戒");
+    expect(riskVerdict(5).title).toContain("危険");
+    // 以前の履歴（平均値の小数）も判定できる
+    expect(riskVerdict(2.3).title).toContain("軽度の注意");
   });
 
-  it("色分けと深刻度ラベル", () => {
-    expect(riskLevelTone(2.4)).toBe("ok");
-    expect(riskLevelTone(2.5)).toBe("low");
-    expect(riskLevelTone(4)).toBe("high");
-    expect(severityLabel(2).label).toBe("軽微");
-    expect(severityLabel(3).label).toBe("中程度");
-    expect(severityLabel(5).label).toBe("重大");
+  it("個々のリスクのラベルと色", () => {
+    expect(severityLabel(2)).toEqual({ label: "軽微", tone: "ok" });
+    expect(severityLabel(3)).toEqual({ label: "注意", tone: "mid" });
+    expect(severityLabel(4)).toEqual({ label: "高", tone: "high" });
+    expect(severityLabel(5)).toEqual({ label: "危険", tone: "high" });
+  });
+
+  it("危険度ごとの件数", () => {
+    expect(countBySeverity([risk(1), risk(2), risk(3), risk(4), risk(5)])).toEqual({ high: 2, mid: 1, low: 2 });
+  });
+});
+
+describe("buildConditions", () => {
+  const plan = {
+    campsite: "x",
+    elevation_m: null,
+    terrain: null,
+    ground: "砂利",
+    planned_date: "2026-10-10",
+    expected_low_c: null,
+    expected_high_c: null,
+    transport: null,
+    companions: null,
+    style: null,
+  };
+  const location = { name: "x", address: "", lat: 35, lon: 138, elevation_m: 822 };
+  const weather = {
+    available: true as const,
+    forecast: {
+      source: "open-meteo" as const,
+      fetched_at: "",
+      days: [],
+      hours: [],
+      stay: { temp_min: 16.7, temp_max: 24.4, precip_prob_max: 10, precip_total_mm: 0, wind_max_ms: 3, gust_max_ms: 6 },
+    },
+  };
+
+  it("標高は国土地理院、気温は予報、地形はAIの推定、入力した地面は入力のまま", () => {
+    expect(buildConditions(plan, { site_terrain: "高原の草地", site_ground: "芝生" }, location, weather)).toEqual({
+      elevation_m: 822,
+      elevation_source: "gsi",
+      temp_min: 16.7,
+      temp_max: 24.4,
+      temp_source: "forecast",
+      terrain: "高原の草地",
+      terrain_source: "ai",
+      ground: "砂利",
+      ground_source: "input",
+    });
+  });
+
+  it("データがなく、AIも「不明」なら null", () => {
+    const c = buildConditions(plan, { site_terrain: "不明", site_ground: "" }, null, null);
+    expect(c).toMatchObject({ elevation_m: null, elevation_source: null, temp_source: null, terrain: null, terrain_source: null });
   });
 });

@@ -11,6 +11,8 @@ const RiskSchema = z.object({
 });
 
 export const DiagnosisOutputSchema = z.object({
+  site_terrain: z.string(),
+  site_ground: z.string(),
   environment_risks: z.array(RiskSchema),
   bio_site_risks: z.array(RiskSchema),
   recommended_tags: z.array(z.string()),

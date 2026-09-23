@@ -1,5 +1,5 @@
 import { WeatherCard } from "@/components/WeatherCard";
-import { riskLevelTone, riskVerdict, severityLabel } from "@/lib/diagnosis";
+import { countBySeverity, riskVerdict, severityLabel } from "@/lib/diagnosis";
 import {
   CATEGORIES,
   CATEGORY_LABELS,
@@ -8,6 +8,7 @@ import {
   type DiagnosisResult,
   type Priority,
   type Risk,
+  type SiteConditions,
 } from "@/lib/domain";
 
 const PRIORITY_ORDER: Record<Priority, number> = { must: 0, recommended: 1, optional: 2 };
@@ -35,30 +36,73 @@ function RiskItems({ risks }: { risks: Risk[] }) {
   );
 }
 
-export function DiagnosisView({ result }: { result: DiagnosisResult }) {
-  const verdict = riskVerdict(result.risk_level);
-  const levelTone = riskLevelTone(result.risk_level);
-  const gapCount = result.total_count - result.owned_count;
+const SOURCE_LABELS: Record<string, string> = {
+  gsi: "国土地理院",
+  forecast: "天気予報",
+  input: "入力",
+  ai: "AIの推定",
+};
 
+function ConditionRow({ label, value, source }: { label: string; value: string | null; source: string | null }) {
   return (
-    <section>
-      {result.location && (
-        <div className="card">
-          <h2>📍 診断した場所</h2>
-          <b>{result.location.name}</b>
-          <div className="muted">{result.location.address}</div>
-          <div className="muted">
-            標高 {result.location.elevation_m != null ? `${result.location.elevation_m}m（国土地理院）` : "不明"}
-          </div>
-          <a
-            href={`https://www.google.com/maps/search/?api=1&query=${result.location.lat},${result.location.lon}`}
-            target="_blank"
-            rel="noreferrer"
-          >
+    <div className="cond-row">
+      <span className="cond-label">{label}</span>
+      <span>
+        {value ?? "不明"}
+        {value && source && <span className="basis">{SOURCE_LABELS[source]}</span>}
+      </span>
+    </div>
+  );
+}
+
+function PlaceCard({ result }: { result: DiagnosisResult }) {
+  const loc = result.location;
+  const c: SiteConditions | null | undefined = result.conditions;
+  if (!loc && !c) return null;
+  const temp =
+    c && (c.temp_min !== null || c.temp_max !== null) ? `${c.temp_min ?? "?"}〜${c.temp_max ?? "?"}℃` : null;
+  return (
+    <div className="card">
+      <h2>📍 診断した場所と条件</h2>
+      {loc && (
+        <div style={{ marginBottom: 8 }}>
+          <b>{loc.name}</b>
+          <div className="muted">{loc.address}</div>
+          <a href={`https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lon}`} target="_blank" rel="noreferrer">
             🗺️ 地図で確認
           </a>
         </div>
       )}
+      {c ? (
+        <>
+          <ConditionRow
+            label="標高"
+            value={c.elevation_m !== null ? `${c.elevation_m}m` : null}
+            source={c.elevation_source}
+          />
+          <ConditionRow label="気温（滞在中）" value={temp} source={c.temp_source} />
+          <ConditionRow label="地形" value={c.terrain} source={c.terrain_source} />
+          <ConditionRow label="地面" value={c.ground} source={c.ground_source} />
+        </>
+      ) : (
+        loc && (
+          <div className="muted">
+            標高 {loc.elevation_m != null ? `${loc.elevation_m}m（国土地理院）` : "不明"}
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
+export function DiagnosisView({ result }: { result: DiagnosisResult }) {
+  const verdict = riskVerdict(result.risk_level);
+  const counts = countBySeverity([...result.environment_risks, ...result.bio_site_risks]);
+  const gapCount = result.total_count - result.owned_count;
+
+  return (
+    <section>
+      <PlaceCard result={result} />
       {result.weather && <WeatherCard weather={result.weather} title="🌦️ 診断に使った天気予報" />}
 
       <div className="card">
@@ -68,14 +112,17 @@ export function DiagnosisView({ result }: { result: DiagnosisResult }) {
           <div className="verdict-text">{verdict.text}</div>
         </div>
         <div className="score-row">
-          <div className={`score-box tone-${levelTone}`}>
+          <div className={`score-box tone-${verdict.tone}`}>
             <div className="score-label">リスクレベル</div>
             <div className="score-value">
-              {result.risk_level.toFixed(1)}
+              {Number.isInteger(result.risk_level) ? result.risk_level : result.risk_level.toFixed(1)}
               <span className="score-unit">/5</span>
             </div>
             <div className="score-bar">
               <div className="score-fill" style={{ width: `${(result.risk_level / 5) * 100}%` }} />
+            </div>
+            <div className="score-label" style={{ marginTop: 6 }}>
+              高 {counts.high}・注意 {counts.mid}・軽微 {counts.low}
             </div>
           </div>
           <div className="score-box tone-ok">
@@ -90,9 +137,8 @@ export function DiagnosisView({ result }: { result: DiagnosisResult }) {
           </div>
         </div>
         <div className="score-caption">
-          リスクレベル:
-          各リスクについて「対策を怠った場合に起こりうる影響の大きさ」を1(軽微)〜5(重大)でAIが評価し、平均したものです。目安:
-          〜2未満=問題なし / 2〜3=軽度の注意 / 3〜4=要注意 / 4以上=警戒(中止も検討)。
+          リスクレベル: 各リスクの危険度（起こりやすさ×影響の大きさ、1〜5）のうち、いちばん高いものです。目安: 1=問題なし /
+          2=軽度の注意 / 3=要注意 / 4=警戒 / 5=危険（中止も検討）。
           <br />
           準備度: パッキングリストの全アイテムのうち、所持している割合です。
         </div>

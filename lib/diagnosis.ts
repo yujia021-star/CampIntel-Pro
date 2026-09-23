@@ -4,7 +4,9 @@ import {
   type DiagnosisResult,
   type Gear,
   type PackingItem,
+  type CampPlanInput,
   type PlaceRef,
+  type SiteConditions,
   type Priority,
   type Risk,
   type RiskBasis,
@@ -15,6 +17,8 @@ import { normalizeTags } from "@/lib/tags";
 
 /** AIが返す生の診断結果（lib/ai/schemas.ts の DiagnosisOutputSchema と同形） */
 export interface RawDiagnosis {
+  site_terrain?: string;
+  site_ground?: string;
   environment_risks: { risk: string; severity: number; basis: string }[];
   bio_site_risks: { risk: string; severity: number; basis: string }[];
   recommended_tags: string[];
@@ -40,11 +44,12 @@ function cleanRisk(r: RawDiagnosis["environment_risks"][number]): Risk {
   return { risk: r.risk.trim(), severity: clampSeverity(r.severity), basis };
 }
 
-/** 全リスクの severity 平均（小数1桁）。リスクがなければ 0。 */
+/**
+ * 総合リスクレベル = いちばん高いリスクの危険度（1〜5）。リスクがなければ 0。
+ * 平均にすると、重大なリスクが軽微なリスクに薄められて見落とされるため最大値を使う。
+ */
 export function computeRiskLevel(risks: Risk[]): number {
-  if (risks.length === 0) return 0;
-  const avg = risks.reduce((s, r) => s + r.severity, 0) / risks.length;
-  return Math.round(avg * 10) / 10;
+  return risks.reduce((max, r) => Math.max(max, r.severity), 0);
 }
 
 export type Tone = "ok" | "low" | "mid" | "high";
@@ -55,7 +60,8 @@ export interface RiskVerdict {
   tone: Tone;
 }
 
-// 目安: 〜2未満=問題なし / 2〜3=軽度の注意 / 3〜4=要注意 / 4以上=警戒
+// 目安: 1以下=問題なし / 2=軽度の注意 / 3=要注意 / 4=警戒 / 5=危険
+// （以前の履歴は平均値なので小数のことがある。境界は「未満」で判定する）
 export function riskVerdict(level: number): RiskVerdict {
   if (level < 2)
     return { title: "✅ 問題なし", tone: "ok", text: "特筆すべきリスクはありません。通常の準備で対応できるレベルです。" };
@@ -69,27 +75,61 @@ export function riskVerdict(level: number): RiskVerdict {
     return {
       title: "🟠 要注意",
       tone: "mid",
-      text: "しっかりとした対策が必要なレベルです。装備を万全にし、行動計画にも余裕を持たせましょう。",
+      text: "対策が必要なリスクがあります。下のリスクと持ち物を確認して準備しましょう。",
+    };
+  if (level < 5)
+    return {
+      title: "🔴 警戒",
+      tone: "high",
+      text: "しっかり対策しないと危険なリスクがあります。装備を万全にし、行動計画にも余裕を持たせましょう。",
     };
   return {
-    title: "🔴 警戒",
+    title: "⛔ 危険",
     tone: "high",
-    text: "重大なリスクがあります。対策が難しい場合は、日程の変更や中止も検討してください。",
+    text: "重大なリスクがあります。日程の変更や中止も検討してください。",
   };
 }
 
-/** リスクレベル（平均）の色分け: 4以上=赤 / 2.5以上=黄 / それ未満=緑 */
-export function riskLevelTone(level: number): Tone {
-  if (level >= 4) return "high";
-  if (level >= 2.5) return "low";
-  return "ok";
+/** 個々のリスクの危険度ラベル */
+export function severityLabel(severity: number): { label: string; tone: Tone } {
+  if (severity >= 5) return { label: "危険", tone: "high" };
+  if (severity >= 4) return { label: "高", tone: "high" };
+  if (severity >= 3) return { label: "注意", tone: "mid" };
+  return { label: "軽微", tone: "ok" };
 }
 
-/** 個々のリスクの深刻度ラベル */
-export function severityLabel(severity: number): { label: string; tone: Tone } {
-  if (severity >= 4) return { label: "重大", tone: "high" };
-  if (severity === 3) return { label: "中程度", tone: "low" };
-  return { label: "軽微", tone: "ok" };
+/** 危険度ごとの件数（総合評価の補足表示用） */
+export function countBySeverity(risks: Risk[]): { high: number; mid: number; low: number } {
+  return {
+    high: risks.filter((r) => r.severity >= 4).length,
+    mid: risks.filter((r) => r.severity === 3).length,
+    low: risks.filter((r) => r.severity <= 2).length,
+  };
+}
+
+const blank = (v: string | null | undefined) => !v || !v.trim() || v.trim() === "不明";
+
+/** 標高・気温・地形・地面を、どこから得た値かと一緒にまとめる */
+export function buildConditions(
+  plan: CampPlanInput,
+  raw: Pick<RawDiagnosis, "site_terrain" | "site_ground">,
+  location?: PlaceRef | null,
+  weather?: ForecastResult | null,
+): SiteConditions {
+  const gsi = location?.elevation_m ?? null;
+  const stay = weather?.available ? weather.forecast.stay : null;
+  const fromForecast = stay !== null && (stay.temp_min !== null || stay.temp_max !== null);
+  return {
+    elevation_m: gsi ?? plan.elevation_m,
+    elevation_source: gsi !== null ? "gsi" : plan.elevation_m !== null ? "input" : null,
+    temp_min: fromForecast ? stay!.temp_min : plan.expected_low_c,
+    temp_max: fromForecast ? stay!.temp_max : plan.expected_high_c,
+    temp_source: fromForecast ? "forecast" : plan.expected_low_c !== null || plan.expected_high_c !== null ? "input" : null,
+    terrain: plan.terrain ?? (blank(raw.site_terrain) ? null : raw.site_terrain!.trim()),
+    terrain_source: plan.terrain ? "input" : blank(raw.site_terrain) ? null : "ai",
+    ground: plan.ground ?? (blank(raw.site_ground) ? null : raw.site_ground!.trim()),
+    ground_source: plan.ground ? "input" : blank(raw.site_ground) ? null : "ai",
+  };
 }
 
 /**
@@ -103,7 +143,7 @@ export function finalizeDiagnosis(
   raw: RawDiagnosis,
   gears: Gear[],
   diaryCountUsed: number,
-  context: { location?: PlaceRef | null; weather?: ForecastResult | null } = {},
+  context: { location?: PlaceRef | null; weather?: ForecastResult | null; plan?: CampPlanInput } = {},
 ): DiagnosisResult {
   const gearById = new Map(gears.map((g) => [g.id, g]));
   const gearByName = new Map(gears.map((g) => [g.name.trim().toLowerCase(), g]));
@@ -167,6 +207,7 @@ export function finalizeDiagnosis(
     total_count,
     diary_count_used: diaryCountUsed,
     location: context.location ?? null,
+    conditions: context.plan ? buildConditions(context.plan, raw, context.location, context.weather) : null,
     weather: context.weather ?? null,
   };
 }
