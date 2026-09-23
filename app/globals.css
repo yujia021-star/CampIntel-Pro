@@ -304,3 +304,12 @@ textarea { resize: vertical; min-height: 64px; }
 .stepper { display: flex; align-items: center; gap: 8px; }
 .stepper input { width: 80px; text-align: center; font-size: 1.1rem; }
 .stepper .btn { width: 44px; padding: 8px 0; margin: 0; }
+button.link-chip { cursor: pointer; font: inherit; font-size: 0.85rem; }
+.link-chip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.nearby-list { margin: 8px 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 12px; }
+.nearby-list .muted { margin: 4px 0; font-size: 0.85rem; }
+.nearby-item { display: flex; align-items: baseline; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); color: inherit; text-decoration: none; font-size: 0.9rem; }
+.nearby-name { flex: 1; min-width: 0; }
+.nearby-dist { font-size: 0.8rem; white-space: nowrap; }
+.nearby-go { color: var(--accent); font-size: 0.8rem; white-space: nowrap; }
+.nearby-list > a:last-child { display: inline-block; margin-top: 8px; }

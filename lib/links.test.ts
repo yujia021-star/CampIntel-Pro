@@ -42,3 +42,12 @@ describe("外部リンク", () => {
     expect(reserveLinks(" ふもとっぱら ")[0].url).toContain(encodeURIComponent("ふもとっぱら site:nap-camp.com"));
   });
 });
+
+describe("施設までの経路", () => {
+  it("出発地は診断した場所、行き先は施設の座標", async () => {
+    const { routeFromUrl } = await import("./links");
+    const url = new URL(routeFromUrl({ lat: 35.31, lon: 139.4 }, { lat: 35.33, lon: 139.41 }));
+    expect(url.searchParams.get("origin")).toBe("35.31000,139.40000");
+    expect(url.searchParams.get("destination")).toBe("35.33000,139.41000");
+  });
+});
