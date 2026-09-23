@@ -4,15 +4,19 @@ import {
   type DiagnosisResult,
   type Gear,
   type PackingItem,
+  type PlaceRef,
   type Priority,
   type Risk,
+  type RiskBasis,
+  RISK_BASES,
 } from "@/lib/domain";
+import type { ForecastResult } from "@/lib/weather/forecast";
 import { normalizeTags } from "@/lib/tags";
 
 /** AIが返す生の診断結果（lib/ai/schemas.ts の DiagnosisOutputSchema と同形） */
 export interface RawDiagnosis {
-  environment_risks: { risk: string; severity: number }[];
-  bio_site_risks: { risk: string; severity: number }[];
+  environment_risks: { risk: string; severity: number; basis: string }[];
+  bio_site_risks: { risk: string; severity: number; basis: string }[];
   recommended_tags: string[];
   packing_list: {
     item: string;
@@ -31,7 +35,9 @@ function clampSeverity(n: number): number {
 }
 
 function cleanRisk(r: RawDiagnosis["environment_risks"][number]): Risk {
-  return { risk: r.risk.trim(), severity: clampSeverity(r.severity) };
+  // 根拠が不明なものは「一般的傾向」として扱う（データに基づくと誤解させない）
+  const basis: RiskBasis = (RISK_BASES as readonly string[]).includes(r.basis) ? (r.basis as RiskBasis) : "season_region";
+  return { risk: r.risk.trim(), severity: clampSeverity(r.severity), basis };
 }
 
 /** 全リスクの severity 平均（小数1桁）。リスクがなければ 0。 */
@@ -93,7 +99,12 @@ export function severityLabel(severity: number): { label: string; tone: Tone } {
  * - 定番装備(is_base)は必ずパッキングリストに含める（プロンプト任せにしない）
  * - 準備度%・所持件数は同じパッキングリストから計算する（数字の食い違いを防ぐ）
  */
-export function finalizeDiagnosis(raw: RawDiagnosis, gears: Gear[], diaryCountUsed: number): DiagnosisResult {
+export function finalizeDiagnosis(
+  raw: RawDiagnosis,
+  gears: Gear[],
+  diaryCountUsed: number,
+  context: { location?: PlaceRef | null; weather?: ForecastResult | null } = {},
+): DiagnosisResult {
   const gearById = new Map(gears.map((g) => [g.id, g]));
   const gearByName = new Map(gears.map((g) => [g.name.trim().toLowerCase(), g]));
   const usedGearIds = new Set<string>();
@@ -155,5 +166,7 @@ export function finalizeDiagnosis(raw: RawDiagnosis, gears: Gear[], diaryCountUs
     owned_count,
     total_count,
     diary_count_used: diaryCountUsed,
+    location: context.location ?? null,
+    weather: context.weather ?? null,
   };
 }

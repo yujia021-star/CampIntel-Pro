@@ -7,6 +7,7 @@ import { z } from "zod";
 const RiskSchema = z.object({
   risk: z.string(),
   severity: z.number(),
+  basis: z.string(),
 });
 
 export const DiagnosisOutputSchema = z.object({

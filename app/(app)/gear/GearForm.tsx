@@ -98,7 +98,7 @@ export function GearForm({ initial, submitLabel, onSubmit, onCancel, enableAi = 
       if (seq !== requestSeq.current) return;
       if (!res.ok || !json) {
         setStatus(null);
-        setError(json?.message ?? "写真の解析に失敗しました。時間をおいて再試行してください。");
+        setError(json?.message ?? `写真の解析に失敗しました（エラー ${res.status}）。時間をおいて再試行してください。`);
         return;
       }
       if (!json.recognized) {
@@ -114,9 +114,9 @@ export function GearForm({ initial, submitLabel, onSubmit, onCancel, enableAi = 
       tagsEdited.current = false;
       categoryEdited.current = false;
       setStatus("写真から入力しました。内容を確認して「＋ ギアを追加」を押してください。");
-    } catch {
+    } catch (e) {
       setStatus(null);
-      setError("写真を読み込めませんでした");
+      setError((e as Error).message || "写真を読み込めませんでした");
     } finally {
       setRecognizing(false);
       if (fileInput.current) fileInput.current.value = "";
@@ -164,27 +164,22 @@ export function GearForm({ initial, submitLabel, onSubmit, onCancel, enableAi = 
         placeholder="例: モンベル ダウンハガー800"
       />
       {enableAi && (
-        <>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            style={{ marginTop: 6 }}
-            disabled={recognizing}
-            onClick={() => fileInput.current?.click()}
-          >
-            📷 写真から入力
-          </button>
+        // ボタンからコードで input.click() すると、アプリ内ブラウザでは写真選択が開かないことがある。
+        // label で input を包み、タップをそのまま input に届ける。
+        <label className={`btn btn-secondary btn-sm photo-btn${recognizing ? " disabled" : ""}`}>
+          {recognizing ? "解析中…" : "📷 写真から入力"}
           <input
             ref={fileInput}
             type="file"
             accept="image/*"
-            hidden
+            className="visually-hidden"
+            disabled={recognizing}
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) void onPhoto(f);
             }}
           />
-        </>
+        </label>
       )}
       <label htmlFor={`${uid}-category`}>カテゴリ</label>
       <select

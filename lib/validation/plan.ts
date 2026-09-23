@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { CampPlanInput } from "@/lib/domain";
+import type { CampPlanInput, PlaceRef } from "@/lib/domain";
 
 const optText = (max: number) =>
   z
@@ -39,3 +39,30 @@ export const CampPlanInputSchema = z.object({
   companions: optText(100),
   style: optText(100),
 }) satisfies z.ZodType<CampPlanInput, unknown>;
+
+/** 検索で選んだ場所（任意）。camp_plans の列ではなく診断結果に保存する */
+export const PlaceInputSchema = z
+  .object({
+    place_name: z.string().trim().min(1).max(200),
+    place_address: z.string().trim().max(300).default(""),
+    place_lat: z.coerce.number().min(20).max(46),
+    place_lon: z.coerce.number().min(122).max(154),
+  })
+  .transform(
+    (p): Omit<PlaceRef, "elevation_m"> => ({
+      name: p.place_name,
+      address: p.place_address,
+      lat: p.place_lat,
+      lon: p.place_lon,
+    }),
+  );
+
+/** フォームの値から、計画の列と（あれば）選んだ場所を取り出す */
+export function parseDiagnoseInput(body: unknown) {
+  const plan = CampPlanInputSchema.safeParse(body);
+  if (!plan.success) return { ok: false as const, message: plan.error.issues[0]?.message ?? "入力が不正です" };
+  const b = (body ?? {}) as Record<string, unknown>;
+  const place = b.place_lat && b.place_lon ? PlaceInputSchema.safeParse(b) : null;
+  if (place && !place.success) return { ok: false as const, message: "選んだ場所の情報が不正です" };
+  return { ok: true as const, plan: plan.data, place: place?.data ?? null };
+}

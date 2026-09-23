@@ -1,4 +1,5 @@
-import { type CampPlanInput, type DiaryEntry, type Gear } from "@/lib/domain";
+import { type CampPlanInput, type DiaryEntry, type Gear, type PlaceRef } from "@/lib/domain";
+import type { ForecastResult } from "@/lib/weather/forecast";
 
 // プロトタイプの combinedInput / diarySummary を移植したもの。
 // 注意: 出力形式は構造化出力のスキーマ（lib/ai/schemas.ts）で縛る。JSON構造の値の部分に
@@ -11,6 +12,9 @@ export const DIAGNOSIS_SYSTEM = `あなたはプロのキャンプアドバイ�
 
 手順:
 1. 環境・気候リスク（environment_risks）と生物・サイト特有のリスク（bio_site_risks）を分析し、それぞれ severity(1〜5) を付ける。severity は「対策を怠った場合に起こりうる影響の大きさ」で、1=軽微、5=重大。各リスクの risk は20〜30字程度で簡潔に書く。
+   - 各リスクに、何をもとに判断したかを basis で示す: forecast=【天気予報】の数値、terrain=標高・地形・地面、season_region=季節と地域の一般的な傾向、diary=過去の日記、input=ユーザーの入力内容（移動手段・同行者など）。
+   - 【天気予報】がある場合、気温・降水・風のリスクは必ずその数値を根拠にし、risk の文中に数値を入れる（例:「夜間最低2℃、結露と冷え込みに注意」）。予報がない場合は forecast を使わない。
+   - クマ・ハチ・虫などの生物リスクは、季節と地域の一般的な傾向として述べる（basis=season_region）。最近の出没情報や事故など、与えられていない具体的な事実は作らない。
 2. 今回のキャンプで推奨されるギアタグを recommended_tags に抽出する（#記号なしの日本語の単語）。
 3. 所持ギア一覧の中から、表記揺れ・類義語・関連する上位/下位概念も考慮し、推奨タグに合致するものを柔軟に判定する。
 4. カテゴリ別パッキングリスト（packing_list）を作る。
@@ -46,7 +50,33 @@ export function diarySummary(entries: DiaryEntry[]): string {
 ${lines}`;
 }
 
-export function buildDiagnosisPrompt(plan: CampPlanInput, gears: Gear[], diaries: DiaryEntry[]): string {
+function num(v: number | null | undefined, unit: string): string {
+  return v === null || v === undefined ? "不明" : `${v}${unit}`;
+}
+
+/** 天気予報をプロンプト用の文章にする */
+export function forecastSummary(weather: ForecastResult | null | undefined): string {
+  if (!weather) return "";
+  if (!weather.available) return `\n\n【天気予報】\n（なし: ${weather.message}）`;
+  const f = weather.forecast;
+  const days = f.days
+    .map(
+      (d) =>
+        `- ${d.date}: ${d.weather}、最高${num(d.temp_max, "℃")}／最低${num(d.temp_min, "℃")}、降水確率最大${num(d.precip_prob_max, "%")}、降水量${num(d.precip_sum_mm, "mm")}、最大風速${num(d.wind_max_ms, "m/s")}（瞬間${num(d.gust_max_ms, "m/s")}）`,
+    )
+    .join("\n");
+  const s = f.stay;
+  return `\n\n【天気予報（Open-Meteo、取得: ${f.fetched_at.slice(0, 16)}）】
+${days}
+- 滞在時間帯（予定日12時〜翌日12時）: 気温${num(s.temp_min, "℃")}〜${num(s.temp_max, "℃")}、降水確率最大${num(s.precip_prob_max, "%")}、降水量合計${num(s.precip_total_mm, "mm")}、最大風速${num(s.wind_max_ms, "m/s")}、最大瞬間風速${num(s.gust_max_ms, "m/s")}`;
+}
+
+export function buildDiagnosisPrompt(
+  plan: CampPlanInput,
+  gears: Gear[],
+  diaries: DiaryEntry[],
+  context: { location?: PlaceRef | null; weather?: ForecastResult | null } = {},
+): string {
   const gearDesc = gears.length
     ? gears
         .map((g) => `- id=${g.id} ${g.name}（タグ: ${g.tags.join(", ") || "なし"}${g.is_base ? "、定番装備" : ""}）`)
@@ -59,14 +89,18 @@ export function buildDiagnosisPrompt(plan: CampPlanInput, gears: Gear[], diaries
   ].filter(Boolean);
 
   return `【キャンプ計画・環境データ】
-- キャンプ場名: ${plan.campsite}
-- 標高: ${fmt(plan.elevation_m, "m")}
+- キャンプ場名: ${plan.campsite}${
+    context.location
+      ? `\n- 所在地: ${context.location.address || context.location.name}（緯度${context.location.lat.toFixed(3)}, 経度${context.location.lon.toFixed(3)}）`
+      : ""
+  }
+- 標高: ${fmt(plan.elevation_m, "m")}${context.location?.elevation_m != null ? `（国土地理院の標高データ: ${context.location.elevation_m}m）` : ""}
 - 地形: ${fmt(plan.terrain)}
 - 地面の性質: ${fmt(plan.ground)}
 - 予定日: ${fmt(plan.planned_date)}${temps.length ? ` (${temps.join(" / ")})` : ""}
 - 移動手段: ${fmt(plan.transport)}
 - 同行者: ${fmt(plan.companions)}
-- 今回のスタイル: ${fmt(plan.style)}${diarySummary(diaries)}
+- 今回のスタイル: ${fmt(plan.style)}${forecastSummary(context.weather)}${diarySummary(diaries)}
 
 【ユーザーの所持ギア一覧】
 ${gearDesc}
