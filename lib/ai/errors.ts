@@ -40,13 +40,14 @@ export function classifyAiError(error: unknown): AiErrorCode {
  * 1ユーザーあたり1時間の呼び出し回数の上限（機能ごと）。
  * タグ提案は入力が止まるたびに呼ばれるので多めにし、重い診断は少なめにする。
  */
-export const HOURLY_LIMITS = { diagnose: 20, gear_suggest: 150, gear_recognize: 40 } as const;
+export const HOURLY_LIMITS = { diagnose: 20, gear_suggest: 150, gear_recognize: 40, place_lookup: 30 } as const;
 export type AiKind = keyof typeof HOURLY_LIMITS;
 
 const KIND_LABELS: Record<AiKind, string> = {
   diagnose: "プラン診断",
   gear_suggest: "タグの自動提案",
   gear_recognize: "写真からの入力",
+  place_lookup: "AIによるキャンプ場探し",
 };
 
 /** 上限に達したときの文言。いちばん古い記録が1時間を過ぎるまでの分数を添える */

@@ -36,6 +36,11 @@ const WEATHER_ICON: Record<Weather, string> = { 晴れ: "☀️", 曇り: "☁�
 const TEMP_ICON: Record<TempFeel, string> = { 寒すぎ: "🥶", ちょうどいい: "😊", 暑すぎ: "🥵" };
 const BUGS_ICON: Record<Bugs, string> = { なし: "🚫", 少し: "🦟", 多い: "🐝" };
 
+/** 滞在を記録する前の日記は、眠りの質を聞いていた＝泊まりなので1泊として扱う */
+function stayOf(e: DiaryEntry): number {
+  return e.nights ?? 1;
+}
+
 function today() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -257,12 +262,12 @@ export function DiaryManager({
               <div style={{ minWidth: 0 }}>
                 <div className="diary-meta">
                   {e.date}
-                  {e.nights != null ? ` ・ ${NIGHTS_ICONS[e.nights]} ${NIGHTS_LABELS[e.nights]}` : ""}
+                  {` ・ ${NIGHTS_ICONS[stayOf(e)]} ${NIGHTS_LABELS[stayOf(e)]}`}
                   {e.campsite ? ` ・ ${e.campsite}` : ""}
                 </div>
                 <div className="diary-tags">
                   {WEATHER_ICON[e.weather]} {e.weather}　{TEMP_ICON[e.temp_feel]} {e.temp_feel}　🦟 {e.bugs}
-                  {e.nights !== 0 && `${"★".repeat(e.sleep_quality)}${"☆".repeat(5 - e.sleep_quality)}`}
+                  {e.nights !== 0 && `　😴 ${"★".repeat(e.sleep_quality)}${"☆".repeat(5 - e.sleep_quality)}`}
                 </div>
                 {e.good_gear.length > 0 && <div className="diary-tags">👍 {e.good_gear.join("、")}</div>}
                 {e.bad_gear.length > 0 && <div className="diary-tags">👎 {e.bad_gear.join("、")}</div>}
