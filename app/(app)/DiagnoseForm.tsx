@@ -295,7 +295,8 @@ export function DiagnoseForm({
                   setResult(null);
                 }}
               >
-                {NIGHTS_ICONS[n]} {NIGHTS_LABELS[n]}
+                <span className="choice-icon">{NIGHTS_ICONS[n]}</span>
+                {NIGHTS_LABELS[n]}
               </button>
             ))}
           </div>
@@ -352,7 +353,8 @@ export function DiagnoseForm({
           <div className="choice-row" role="group" aria-label="移動手段">
             {TRANSPORTS.map((t) => (
               <button key={t} type="button" className="choice-btn" aria-pressed={transport === t} onClick={() => setTransport(transport === t ? "" : t)}>
-                {TRANSPORT_ICONS[t]} {t}
+                <span className="choice-icon">{TRANSPORT_ICONS[t]}</span>
+                {t}
               </button>
             ))}
           </div>
@@ -363,7 +365,8 @@ export function DiagnoseForm({
           <div className="choice-row" role="group" aria-label="同行者">
             {COMPANIONS.map((c) => (
               <button key={c} type="button" className="choice-btn" aria-pressed={companions === c} onClick={() => setCompanions(companions === c ? "" : c)}>
-                {COMPANION_ICONS[c]} {c}
+                <span className="choice-icon">{COMPANION_ICONS[c]}</span>
+                {c}
               </button>
             ))}
           </div>

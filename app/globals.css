@@ -103,6 +103,9 @@ textarea { resize: vertical; min-height: 64px; }
   border: 1px solid var(--border); background: var(--bg); color: var(--text); font-weight: 500;
   cursor: pointer; font-family: inherit;
 }
+/* アイコンを上、言葉を下にして、言葉が1文字だけ次の行に落ちないようにする */
+.choice-btn { white-space: nowrap; line-height: 1.3; }
+.choice-icon { display: block; font-size: 1.15rem; margin-bottom: 2px; }
 .choice-btn[aria-pressed="true"] { background: var(--accent); color: white; border-color: var(--accent); font-weight: 700; }
 .star-row { display: flex; gap: 4px; margin-top: 8px; }
 .star { background: none; border: none; padding: 0; font-size: 1.8rem; line-height: 1; color: var(--border); cursor: pointer; }
