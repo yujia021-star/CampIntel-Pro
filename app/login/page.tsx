@@ -2,10 +2,9 @@ import { redirect } from "next/navigation";
 import { getUser } from "@/lib/supabase/server";
 import { LoginForm } from "./LoginForm";
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function LoginPage() {
   const { user } = await getUser();
   if (user) redirect("/");
-  const { error } = await searchParams;
 
   return (
     <div className="container" style={{ paddingTop: "18vh" }}>
@@ -14,9 +13,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           🏕️ campintel
         </h1>
         <p className="muted" style={{ marginTop: 0 }}>
-          招待されたメールアドレスでログイン
+          招待されたアカウントでログイン
         </p>
-        {error === "link" && <p className="error">リンクが無効か期限切れです。もう一度送信してください。</p>}
         <LoginForm />
       </div>
     </div>

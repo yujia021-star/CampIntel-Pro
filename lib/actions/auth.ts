@@ -1,45 +1,36 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { loginErrorMessage } from "@/lib/auth-errors";
-import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
 export interface LoginState {
-  status: "idle" | "sent" | "error";
+  status: "idle" | "error";
   message?: string;
 }
 
-/**
- * マジックリンクの戻り先のベースURL。
- * 実際にアクセスされているドメインを使う（環境変数の設定漏れ・食い違いで localhost に戻るのを防ぐ）。
- * 取れないときだけ NEXT_PUBLIC_SITE_URL を使う。
- */
-async function siteOrigin(): Promise<string> {
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host");
-  if (!host) return env.siteUrl();
-  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  return `${proto}://${host}`;
-}
+const Credentials = z.object({
+  email: z.email("メールアドレスの形式が正しくありません"),
+  password: z.string().min(1, "パスワードを入力してください"),
+});
 
-export async function sendMagicLink(_prev: LoginState, formData: FormData): Promise<LoginState> {
-  const parsed = z.email().safeParse(String(formData.get("email") ?? "").trim().toLowerCase());
-  if (!parsed.success) return { status: "error", message: "メールアドレスの形式が正しくありません" };
+// アカウントは Supabase の管理画面（Authentication → Users → Add user）で作る。
+// ログインのたびにメールを送らないので、送信回数の上限やリダイレクト設定に左右されない。
+export async function signIn(_prev: LoginState, formData: FormData): Promise<LoginState> {
+  const parsed = Credentials.safeParse({
+    email: String(formData.get("email") ?? "").trim().toLowerCase(),
+    password: String(formData.get("password") ?? ""),
+  });
+  if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message };
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email: parsed.data,
-    options: { emailRedirectTo: `${await siteOrigin()}/auth/confirm` },
-  });
-
+  const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) {
     console.error("[login]", error.code, error.status, error.message);
     return { status: "error", message: loginErrorMessage(error) };
   }
-  return { status: "sent", message: `${parsed.data} にログインリンクを送りました。メールを確認してください。` };
+  redirect("/");
 }
 
 export async function signOut() {

@@ -22,14 +22,12 @@ Next.js (App Router) + Supabase + Claude API で動きます。
      ('you@example.com', '自分'),
      ('family@example.com', '家族');
    ```
-4. Authentication → URL Configuration
-   - Site URL: 本番URL（例: `https://campintel.vercel.app`）
-   - Redirect URLs: `http://localhost:3000/auth/confirm` と `https://<本番ドメイン>/auth/confirm`
-5. （推奨）Authentication → Email Templates → Magic Link のリンクを次に変更すると、メールを別の端末で開いてもログインできます
-   ```
-   {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=magiclink
-   ```
-   ※ Supabase 無料枠の標準メール送信は1時間あたりの上限が小さいので、利用者が増えたら SMTP 設定を検討してください。
+4. Authentication → Users → **Add user** → **Create new user** で、メールアドレスとパスワードを入れ、**Auto Confirm User** にチェックを入れて作成
+   - 3 の許可リストにないアドレスは作成できません
+   - パスワードを忘れたら、同じ画面でユーザーを選んでパスワードを設定し直します
+5. （推奨）Authentication → Sign In / Providers → **Allow new users to sign up** をオフにする
+
+ログインはメールアドレス＋パスワードです。ログインのたびにメールを送らないので、SMTP やリダイレクトURLの設定は不要です。
 
 ### 2. 環境変数
 
@@ -40,7 +38,6 @@ Next.js (App Router) + Supabase + Claude API で動きます。
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase の Project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase の anon / publishable key |
 | `ANTHROPIC_API_KEY` | Anthropic API キー（サーバー側のみで使用） |
-| `NEXT_PUBLIC_SITE_URL` | マジックリンクの戻り先のベースURL |
 | `ANTHROPIC_MODEL` | 任意。既定は `claude-sonnet-5` |
 | `AI_HOURLY_LIMIT` | 任意。1ユーザー1時間あたりのAI呼び出し上限（既定 30） |
 
@@ -54,8 +51,7 @@ npm run dev        # http://localhost:3000
 ### 4. Vercel へデプロイ
 
 1. Vercel で GitHub リポジトリをインポート
-2. Project Settings → Environment Variables に上の環境変数を登録（`NEXT_PUBLIC_SITE_URL` は本番URL）
-3. デプロイ後、Supabase の Redirect URLs に本番の `/auth/confirm` を追加
+2. Project Settings → Environment Variables に上の環境変数を登録
 
 ## 開発
 
@@ -79,7 +75,7 @@ npm run build
 ### セキュリティ
 
 - 全テーブルで RLS を有効化し、`user_id = auth.uid()` の行のみ読み書き可能
-- anon キーは公開される前提のため、招待制は `auth.users` への INSERT トリガー（`allowed_emails`）でDB側で強制
+- anon キーは公開される前提のため、招待制は `auth.users` への INSERT トリガー（`allowed_emails`）でDB側で強制（管理画面からのユーザー作成・APIからのサインアップの両方に効く）
 - Anthropic API キーはサーバー（Route Handler）のみで使用。AI呼び出しは認証必須＋DBベースのレート制限（`ai_requests`）
 
 ### エラーコード（AI系API）

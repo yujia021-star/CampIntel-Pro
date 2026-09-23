@@ -2,20 +2,10 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
 
-const PUBLIC_PATHS = ["/login", "/auth"];
+const PUBLIC_PATHS = ["/login"];
 
 /** セッションcookieを更新し、未ログインならログイン画面へ送る。 */
 export async function updateSession(request: NextRequest) {
-  // Supabase の Redirect URLs に戻り先が未登録だと、リンクは Site URL（トップ）に ?code= 付きで戻ってくる。
-  // その場合もログインできるよう /auth/confirm に回す。
-  const code = request.nextUrl.searchParams.get("code");
-  if (code && !request.nextUrl.pathname.startsWith("/auth/")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/auth/confirm";
-    url.search = `?code=${encodeURIComponent(code)}`;
-    return NextResponse.redirect(url);
-  }
-
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(env.supabaseUrl(), env.supabaseAnonKey(), {
