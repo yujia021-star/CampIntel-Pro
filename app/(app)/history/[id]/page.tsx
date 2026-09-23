@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DiagnosisView } from "@/components/DiagnosisView";
-import type { CampPlan } from "@/lib/domain";
+import { NIGHTS_LABELS, type CampPlan } from "@/lib/domain";
 import { getUser } from "@/lib/supabase/server";
 import { DeletePlanButton } from "./DeletePlanButton";
 
@@ -13,6 +13,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
   const plan = data as CampPlan;
 
   const conditions = [
+    plan.nights != null ? NIGHTS_LABELS[plan.nights] : null,
     plan.planned_date,
     plan.elevation_m != null ? `標高${plan.elevation_m}m` : null,
     plan.terrain,
@@ -37,7 +38,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
           {conditions.join(" / ") || "条件の入力なし"}
         </p>
       </div>
-      {plan.result ? <DiagnosisView result={plan.result} /> : <p className="muted">診断結果がありません。</p>}
+      {plan.result ? <DiagnosisView result={plan.result} planId={plan.id} /> : <p className="muted">診断結果がありません。</p>}
     </>
   );
 }

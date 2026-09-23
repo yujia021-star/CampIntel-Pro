@@ -10,7 +10,8 @@ Next.js (App Router) + Supabase + Claude API で動きます。
   - 各リスクに根拠（天気予報／標高・地形／季節・地域の一般的傾向／過去の日記／入力内容）を表示
   - 総合リスクレベルは各リスクの危険度（起こりやすさ×影響、1〜5）の最大値。平均だと重大なリスクが薄まるため
 - **マイギア**: ギア名入力の0.7秒後にAIがタグ・カテゴリを提案（手動編集した項目は上書きしない）／📷 写真から認識（Claude Vision。1枚に複数写っていれば一覧から選んでまとめて登録）／定番装備フラグ
-- **日記**: タップで記録、8種の達成バッジ、次回診断のプロンプトに反映
+- **滞在タイプ**: デイキャンプ／1泊／2泊。天気予報の範囲（当日9〜18時／初日12時〜最終日12時）と、AIが重視するリスク・持ち物が変わる
+- **日記**: タップで記録、8種の達成バッジ、次回診断のプロンプトに反映。診断結果・履歴の「この計画の日記を書く」から、場所・日程を引き継いで記録でき、そのときの予報と体感の差を次の診断に活かす
 - **履歴**: 過去の診断結果を閲覧・削除
 
 `legacy/index.html` は以前の Google Apps Script 版プロトタイプです（参考用に残しています）。
@@ -20,7 +21,9 @@ Next.js (App Router) + Supabase + Claude API で動きます。
 ### 1. Supabase
 
 1. [supabase.com](https://supabase.com) でプロジェクトを作成（無料枠）
-2. SQL Editor で `supabase/migrations/20260923000000_init.sql` を実行（Supabase CLI を使う場合は `supabase db push`）
+2. SQL Editor で `supabase/migrations/` の SQL をファイル名の順に実行（Supabase CLI を使う場合は `supabase db push`）
+   - `20260923000000_init.sql`: テーブル・RLS・招待制
+   - `20260924000000_stay_and_diary_link.sql`: デイキャンプ・連泊と、診断と日記のひも付け
 3. 身内のメールアドレスを許可リストに登録（ここにないアドレスはアカウント作成がDB側で拒否されます）
    ```sql
    insert into public.allowed_emails (email, note) values

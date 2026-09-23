@@ -1,8 +1,11 @@
-import { WeatherCard } from "@/components/WeatherCard";
+import Link from "next/link";
+import { dayLabel, WeatherCard } from "@/components/WeatherCard";
 import { countBySeverity, riskVerdict, severityLabel } from "@/lib/diagnosis";
 import {
   CATEGORIES,
   CATEGORY_LABELS,
+  NIGHTS_ICONS,
+  NIGHTS_LABELS,
   PRIORITY_LABELS,
   RISK_BASIS_LABELS,
   type DiagnosisResult,
@@ -55,10 +58,17 @@ function ConditionRow({ label, value, source }: { label: string; value: string |
   );
 }
 
+function stayText(stay: NonNullable<DiagnosisResult["stay"]>): string {
+  const label = `${NIGHTS_ICONS[stay.nights] ?? ""} ${NIGHTS_LABELS[stay.nights] ?? ""}`.trim();
+  if (!stay.start) return label;
+  if (stay.nights === 0 || !stay.end) return `${label}（${dayLabel(stay.start)}）`;
+  return `${label}（${dayLabel(stay.start)}〜${dayLabel(stay.end)}）`;
+}
+
 function PlaceCard({ result }: { result: DiagnosisResult }) {
   const loc = result.location;
   const c: SiteConditions | null | undefined = result.conditions;
-  if (!loc && !c) return null;
+  if (!loc && !c && !result.stay) return null;
   const temp =
     c && (c.temp_min !== null || c.temp_max !== null) ? `${c.temp_min ?? "?"}〜${c.temp_max ?? "?"}℃` : null;
   return (
@@ -78,6 +88,7 @@ function PlaceCard({ result }: { result: DiagnosisResult }) {
           </a>
         </div>
       )}
+      {result.stay && <ConditionRow label="滞在" value={stayText(result.stay)} source={null} />}
       {c ? (
         <>
           <ConditionRow
@@ -100,7 +111,7 @@ function PlaceCard({ result }: { result: DiagnosisResult }) {
   );
 }
 
-export function DiagnosisView({ result }: { result: DiagnosisResult }) {
+export function DiagnosisView({ result, planId }: { result: DiagnosisResult; planId?: string | null }) {
   const verdict = riskVerdict(result.risk_level);
   const counts = countBySeverity([...result.environment_risks, ...result.bio_site_risks]);
   const gapCount = result.total_count - result.owned_count;
@@ -235,6 +246,16 @@ export function DiagnosisView({ result }: { result: DiagnosisResult }) {
           })}
         </div>
       </div>
+      {planId && (
+        <div className="card" style={{ textAlign: "center" }}>
+          <p className="muted" style={{ marginTop: 0 }}>
+            キャンプから帰ったら、この計画の日記を書きましょう。予報と実際の体感の差が、次の診断に活かされます。
+          </p>
+          <Link href={`/diary?plan=${planId}`} className="btn btn-primary" style={{ marginTop: 0 }}>
+            📔 この計画の日記を書く
+          </Link>
+        </div>
+      )}
     </section>
   );
 }

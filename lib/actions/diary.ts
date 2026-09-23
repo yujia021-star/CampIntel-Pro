@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { insertWithFallback } from "@/lib/db/compat";
 import { BUGS, TEMP_FEELS, WEATHERS } from "@/lib/domain";
 import { getUser } from "@/lib/supabase/server";
 
@@ -28,6 +29,8 @@ const DiaryInput = z.object({
     .trim()
     .max(500)
     .transform((v) => v || null),
+  nights: z.number().int().min(0).max(2).nullish(),
+  plan_id: z.uuid().nullish(),
 });
 export type DiaryInput = z.input<typeof DiaryInput>;
 
@@ -38,7 +41,11 @@ export async function createDiaryEntry(input: DiaryInput): Promise<ActionResult>
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "入力が不正です" };
   const { supabase, user } = await getUser();
   if (!user) return { ok: false, message: "ログインが必要です" };
-  const { error } = await supabase.from("diary_entries").insert({ ...parsed.data, user_id: user.id });
+  // 追加の SQL を実行する前のデータベースでも記録できるよう、泊数と計画のひも付けは外して保存し直す
+  const { error } = await insertWithFallback(supabase, "diary_entries", { ...parsed.data, user_id: user.id }, [
+    "nights",
+    "plan_id",
+  ]);
   if (error) return { ok: false, message: "保存に失敗しました" };
   revalidatePath("/diary");
   return { ok: true };

@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { DiagnosisView } from "@/components/DiagnosisView";
 import { LoadingOverlay } from "@/components/Loading";
 import { WeatherCard } from "@/components/WeatherCard";
-import type { DiagnosisResult } from "@/lib/domain";
+import { NIGHTS_ICONS, NIGHTS_LABELS, NIGHTS_OPTIONS, type DiagnosisResult } from "@/lib/domain";
 import type { Place } from "@/lib/geo/places";
-import type { ForecastResult } from "@/lib/weather/forecast";
+import { addDays, type ForecastResult } from "@/lib/weather/forecast";
+import { dayLabel } from "@/components/WeatherCard";
 
 // 選択肢はプロトタイプと同じ。datalist なので自由入力もできる
 const OPTIONS = {
@@ -82,6 +83,7 @@ const mapUrl = (p: { lat: number; lon: number }) => `https://www.google.com/maps
 
 export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; diaryCount: number }) {
   const [result, setResult] = useState<DiagnosisResult | null>(null);
+  const [planId, setPlanId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -95,6 +97,8 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
 
   // 標高・気温は場所と予定日から自動で取得して表示する（入力欄にはしない）
   const [date, setDate] = useState(nextSaturday);
+  // 泊数（0 = デイキャンプ）
+  const [nights, setNights] = useState(1);
   const [elevation, setElevation] = useState<number | null>(null);
   const [weather, setWeather] = useState<ForecastResult | null>(null);
   const [loadingConditions, setLoadingConditions] = useState(false);
@@ -141,6 +145,7 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
     const controller = new AbortController();
     const params = new URLSearchParams({ lat: String(place.lat), lon: String(place.lon) });
     if (date) params.set("date", date);
+    params.set("nights", String(nights));
     (async () => {
       setLoadingConditions(true);
       try {
@@ -159,7 +164,7 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
       }
     })();
     return () => controller.abort();
-  }, [place, date]);
+  }, [place, date, nights]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -185,6 +190,7 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
         return;
       }
       setResult(json.result);
+      setPlanId(json.plan_id ?? null);
       requestAnimationFrame(() => resultRef.current?.scrollIntoView({ behavior: "smooth" }));
     } catch {
       setError("通信エラーが発生しました。");
@@ -274,7 +280,28 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
         </div>
 
         <div className="field">
-          <label htmlFor="planned_date">予定日</label>
+          <label>滞在</label>
+          <div className="choice-row" role="group" aria-label="滞在">
+            {NIGHTS_OPTIONS.map((n) => (
+              <button
+                key={n}
+                type="button"
+                className="choice-btn"
+                aria-pressed={nights === n}
+                onClick={() => {
+                  setNights(n);
+                  setResult(null);
+                }}
+              >
+                {NIGHTS_ICONS[n]} {NIGHTS_LABELS[n]}
+              </button>
+            ))}
+          </div>
+          <input type="hidden" name="nights" value={nights} />
+        </div>
+
+        <div className="field">
+          <label htmlFor="planned_date">{nights === 0 ? "日付" : "初日（チェックイン）"}</label>
           <input
             id="planned_date"
             name="planned_date"
@@ -286,6 +313,11 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
               setResult(null);
             }}
           />
+          {date && nights > 0 && (
+            <div className="hint">
+              {dayLabel(date)} 〜 {dayLabel(addDays(date, nights))}（{NIGHTS_LABELS[nights]}）
+            </div>
+          )}
         </div>
 
         {place && (
@@ -362,7 +394,7 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
 
       {!result && place && weather && <WeatherCard weather={weather} />}
 
-      <div ref={resultRef}>{result && <DiagnosisView result={result} />}</div>
+      <div ref={resultRef}>{result && <DiagnosisView result={result} planId={planId} />}</div>
     </>
   );
 }

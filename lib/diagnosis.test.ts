@@ -150,6 +150,7 @@ describe("risk level", () => {
 describe("buildConditions", () => {
   const plan = {
     campsite: "x",
+    nights: 1,
     elevation_m: null,
     terrain: null,
     ground: "砂利",
@@ -189,5 +190,14 @@ describe("buildConditions", () => {
   it("データがなく、AIも「不明」なら null", () => {
     const c = buildConditions(plan, { site_terrain: "不明", site_ground: "" }, null, null);
     expect(c).toMatchObject({ elevation_m: null, elevation_source: null, temp_source: null, terrain: null, terrain_source: null });
+  });
+});
+
+describe("滞在の日程", () => {
+  it("泊数から最終日を出す（デイは同じ日）", async () => {
+    const { stayOf } = await import("./diagnosis");
+    expect(stayOf({ nights: 2, planned_date: "2026-10-10" })).toEqual({ nights: 2, start: "2026-10-10", end: "2026-10-12" });
+    expect(stayOf({ nights: 0, planned_date: "2026-10-10" })).toEqual({ nights: 0, start: "2026-10-10", end: "2026-10-10" });
+    expect(stayOf({ nights: 1, planned_date: null })).toEqual({ nights: 1, start: null, end: null });
   });
 });

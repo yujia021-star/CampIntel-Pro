@@ -99,3 +99,38 @@ describe("forecastUrl", () => {
     expect(u.searchParams.get("wind_speed_unit")).toBe("ms");
   });
 });
+
+describe("滞在タイプ（デイ・連泊）", () => {
+  it("滞在時間帯", async () => {
+    const { stayWindow } = await import("./forecast");
+    expect(stayWindow("2026-10-10", 0)).toEqual({ start: "2026-10-10T09:00", end: "2026-10-10T18:00", label: "当日9時〜18時" });
+    expect(stayWindow("2026-10-10", 1).label).toBe("初日12時〜翌日12時");
+    expect(stayWindow("2026-10-10", 2)).toEqual({ start: "2026-10-10T12:00", end: "2026-10-12T12:00", label: "初日12時〜3日目12時" });
+  });
+
+  it("デイキャンプは当日の日中だけを集計する", () => {
+    const f = parseForecast(json, "2026-10-10", new Date(), 0);
+    expect(f.window).toBe("当日9時〜18時");
+    expect(f.hours.map((h) => h.time.slice(11, 13))).toEqual(["09", "12", "15", "18"]);
+    // 日中なので夜間の冷え込み（翌朝の最低）は含まない
+    expect(f.stay.temp_min).toBe(11);
+    expect(f.stay.gust_max_ms).toBe(6);
+  });
+
+  it("2泊は最終日まで予報の範囲に入っている必要がある", async () => {
+    const { forecastAvailability, clampNights } = await import("./forecast");
+    const now = new Date("2026-09-23T03:00:00Z");
+    expect(forecastAvailability("2026-10-07", now, 1)).toBeNull();
+    expect(forecastAvailability("2026-10-07", now, 2)).toMatchObject({ reason: "too_far" });
+    expect(forecastAvailability("2026-10-06", now, 2)).toBeNull();
+    expect(forecastAvailability("2026-10-07", now, 0)).toBeNull();
+    expect(clampNights("0")).toBe(0);
+    expect(clampNights(3)).toBe(1);
+    expect(clampNights(undefined)).toBe(1);
+  });
+
+  it("URL の終了日は泊数ぶん先", () => {
+    expect(new URL(forecastUrl(35, 138, "2026-10-10", 2)).searchParams.get("end_date")).toBe("2026-10-12");
+    expect(new URL(forecastUrl(35, 138, "2026-10-10", 0)).searchParams.get("end_date")).toBe("2026-10-10");
+  });
+});
