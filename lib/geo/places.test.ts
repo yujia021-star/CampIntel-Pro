@@ -89,3 +89,32 @@ describe("キャンプ場名の検索", () => {
     expect(gsiReverseAddress(null)).toBe("");
   });
 });
+
+describe("AIで調べたキャンプ場", () => {
+  it("応答文からJSONを取り出す（前後の文章・壊れたJSONに強い）", async () => {
+    const { parseLookupText } = await import("./campsite-lookup");
+    expect(
+      parseLookupText('調べました。\n{"candidates":[{"name":"柳島キャンプ場","address":"神奈川県茅ヶ崎市柳島海岸","lat":"35.315","lon":139.39}]}'),
+    ).toEqual([{ name: "柳島キャンプ場", address: "神奈川県茅ヶ崎市柳島海岸", lat: 35.315, lon: 139.39 }]);
+    expect(parseLookupText("見つかりませんでした")).toEqual([]);
+    expect(parseLookupText("{broken}")).toEqual([]);
+  });
+
+  it("キャンプ場名らしい入力だけAIに調べさせる", async () => {
+    const { looksLikeCampsite } = await import("./campsite-lookup");
+    expect(looksLikeCampsite("柳島キャンプ場")).toBe(true);
+    expect(looksLikeCampsite("朝霧高原")).toBe(false);
+  });
+
+  it("AIの座標は住所の地点から5km以内のときだけ使う", async () => {
+    const { candidateToPlace } = await import("./campsite-lookup");
+    const geo = { id: "g", name: "神奈川県茅ヶ崎市柳島", address: "神奈川県茅ヶ崎市柳島", lat: 35.32, lon: 139.39, kind: "地名", source: "gsi" as const };
+    const near = candidateToPlace({ name: "柳島キャンプ場", address: "", lat: 35.315, lon: 139.395 }, geo);
+    expect(near).toMatchObject({ lat: 35.315, lon: 139.395, kind: "キャンプ場（AI調べ）", source: "ai", address: "神奈川県茅ヶ崎市柳島" });
+    // 思い違いで遠くの座標を答えたら、住所の地点を使う
+    expect(candidateToPlace({ name: "x", address: "a", lat: 43, lon: 141 }, geo)).toMatchObject({ lat: 35.32, lon: 139.39 });
+    // 住所で引けず、座標も日本の外なら候補にしない
+    expect(candidateToPlace({ name: "x", address: "a", lat: 0, lon: 0 }, null)).toBeNull();
+    expect(candidateToPlace({ name: "x", address: "a", lat: 35.3, lon: 139.3 }, null)).toMatchObject({ lat: 35.3 });
+  });
+});

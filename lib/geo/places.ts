@@ -16,7 +16,7 @@ export interface Place {
   lon: number;
   /** 候補の種類（キャンプ場／施設／地名） */
   kind: string;
-  source: "osm" | "gsi";
+  source: "osm" | "gsi" | "ai";
   /** 場所を選ばずに診断したとき、名前から自動で選んだ場所か */
   auto?: boolean;
 }
@@ -202,15 +202,43 @@ export function mergePlaces(osm: Place[], gsi: Place[], limit = 8): Place[] {
   return out;
 }
 
-async function getJson<T>(url: string, headers: Record<string, string> = {}, timeoutMs = 6000): Promise<T | null> {
+async function getJson<T>(
+  url: string,
+  headers: Record<string, string> = {},
+  timeoutMs = 6000,
+  init: { method?: string; body?: string } = {},
+): Promise<T | null> {
   try {
-    const res = await fetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) });
+    const res = await fetch(url, { ...init, headers, signal: AbortSignal.timeout(timeoutMs) });
     if (!res.ok) throw new Error(`${new URL(url).host} ${res.status}`);
     return (await res.json()) as T;
   } catch (error) {
     console.error("[places]", error);
     return null;
   }
+}
+
+// 本家が混んでいるときに備えて、ミラーを順に試す
+const OVERPASS_ENDPOINTS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+
+async function fetchOverpass(query: string, headers: Record<string, string>) {
+  for (const url of OVERPASS_ENDPOINTS) {
+    // 長い問い合わせでも弾かれないよう POST で送る
+    const json = await getJson<{ elements?: OverpassElement[] }>(
+      url,
+      { ...headers, "Content-Type": "application/x-www-form-urlencoded" },
+      7000,
+      { method: "POST", body: new URLSearchParams({ data: query }).toString() },
+    );
+    if (json) return json;
+  }
+  return null;
+}
+
+/** 名前・住所から国土地理院の地名検索でいちばん当てはまる地点を探す */
+export async function geocodeAddress(address: string): Promise<Place | null> {
+  const url = `https://msearch.gsi.go.jp/address-search/AddressSearch?${new URLSearchParams({ q: address })}`;
+  return parseGsi((await getJson<GsiItem[]>(url)) ?? [])[0] ?? null;
 }
 
 export async function searchPlaces(query: string): Promise<Place[]> {
@@ -226,19 +254,22 @@ export async function searchPlaces(query: string): Promise<Place[]> {
   })}`;
   // bbox で日本に絞る（Photon は国指定のパラメータがない）
   const photon = `https://photon.komoot.io/api/?${new URLSearchParams({ q, limit: "8", bbox: "122,20,154,46" })}`;
-  const overpass = core
-    ? `https://overpass-api.de/api/interpreter?${new URLSearchParams({ data: overpassQuery(core) })}`
-    : null;
   const gsi = `https://msearch.gsi.go.jp/address-search/AddressSearch?${new URLSearchParams({ q })}`;
   const ua = { "User-Agent": USER_AGENT, "Accept-Language": "ja" };
 
   // どれかが落ちても他の結果で候補を出せるよう、並行して呼んで失敗は空扱いにする
   const [overpassJson, photonJson, osmJson, gsiJson] = await Promise.all([
-    overpass ? getJson<{ elements?: OverpassElement[] }>(overpass, ua, 9000) : Promise.resolve(null),
+    core ? fetchOverpass(overpassQuery(core), ua) : Promise.resolve(null),
     getJson<{ features?: PhotonFeature[] }>(photon, ua),
     getJson<NominatimItem[]>(nominatim, ua),
     getJson<GsiItem[]>(gsi),
   ]);
+  console.info("[places]", q, {
+    overpass: overpassJson?.elements?.length ?? "error",
+    photon: photonJson?.features?.length ?? "error",
+    nominatim: osmJson?.length ?? "error",
+    gsi: gsiJson?.length ?? "error",
+  });
   const pois = [
     ...parseOverpass(overpassJson?.elements ?? []),
     ...parsePhoton(photonJson?.features ?? []),
@@ -277,12 +308,6 @@ async function fillAddresses(places: Place[]): Promise<Place[]> {
       return address ? { ...p, address } : p;
     }),
   );
-}
-
-/** 場所を選ばずに診断したときに使う、名前からいちばん当てはまりそうな1件 */
-export async function bestPlace(query: string): Promise<Place | null> {
-  const [first] = await searchPlaces(query);
-  return first ? { ...first, auto: true } : null;
 }
 
 /** 国土地理院の標高（m）。海上・取得できない場所は null */

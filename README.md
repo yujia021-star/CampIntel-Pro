@@ -5,6 +5,7 @@ Next.js (App Router) + Supabase + Claude API で動きます。
 
 - **プラン診断**: キャンプ計画・マイギア・直近5件の日記をまとめて1回のAI呼び出しで診断（リスク・推奨タグ・所持ギアとのマッチング・パッキングリスト・総合アドバイス）。結果は `camp_plans` に履歴として保存
   - キャンプ場名・地名を検索して候補から場所を選ぶと、標高（国土地理院）と予定日の天気予報（天気・気温・降水確率・降水量・風速、3時間ごと）を自動取得し、診断の根拠に使う
+  - 地図データ（OpenStreetMap）にキャンプ場として載っていないときは、AI が Web 検索で所在地を調べ、住所を国土地理院で確かめた候補「キャンプ場（AI調べ）」を先頭に出す（1時間30回まで）
   - 標高・気温は入力せず、取得した値を結果として表示。地形・地面は未入力ならAIが場所から推定（出どころを表示）
   - 移動手段・同行者・スタイルは「詳しく入力（任意）」に折りたたみ、前回の値をこの端末に保存
   - 各リスクに根拠（天気予報／標高・地形／季節・地域の一般的傾向／過去の日記／入力内容）を表示
@@ -90,7 +91,7 @@ npm run build
 | code | HTTP | 状況 |
 |---|---|---|
 | `invalid_json` | 502 | 構造化出力のパース失敗・出力が途中で切れた |
-| `limit_reached` | 429 | アプリの1時間上限（診断20回・タグ提案150回・写真40回／ユーザー。`lib/ai/client.ts` の `HOURLY_LIMITS`） |
+| `limit_reached` | 429 | アプリの1時間上限（診断20回・タグ提案150回・写真40回・AIのキャンプ場探し30回／ユーザー。`lib/ai/client.ts` の `HOURLY_LIMITS`） |
 | `rate_limited` | 429 | Anthropic 側のレート制限 |
 | `no_credit` | 402 | Anthropic のクレジット残高不足 |
 | `bad_api_key` | 500 | Anthropic の APIキーが無効 |
@@ -102,7 +103,7 @@ npm run build
 
 | データ | 提供元 | 備考 |
 |---|---|---|
-| キャンプ場などの施設検索 | OpenStreetMap Nominatim | © OpenStreetMap contributors。利用規約により検索ボタンで1回ずつ呼ぶ |
+| キャンプ場などの施設検索 | OpenStreetMap（Overpass・Photon・Nominatim）。見つからないときは Claude の Web 検索 | Web 検索は Anthropic の料金（1,000回あたり10ドル＋トークン代）。Console で Web 検索がオフだとAIの知識だけで答える。© OpenStreetMap contributors |
 | 地名・住所検索、標高 | 国土地理院 | 地名検索API・標高API |
 | 天気予報 | Open-Meteo | 非商用は無料（CC BY 4.0）。予報は予定日が14日先まで |
 

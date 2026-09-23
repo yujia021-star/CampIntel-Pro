@@ -240,6 +240,9 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
               {searching ? "検索中…" : "🔍 場所を検索"}
             </button>
           </div>
+          {searching && (
+            <div className="hint">地図データにないキャンプ場は AI が Web で調べるので、20秒ほどかかることがあります。</div>
+          )}
           {searchError && <div className="hint" style={{ color: "var(--red)" }}>{searchError}</div>}
           {candidates && candidates.length > 0 && (
             <>
@@ -263,6 +266,11 @@ export function DiagnoseForm({ gearCount, diaryCount }: { gearCount: number; dia
               <div className="muted" style={{ fontSize: "0.8rem" }}>
                 {place.address}
               </div>
+              {place.source === "ai" && (
+                <div className="hint" style={{ color: "var(--amber)", marginTop: 2 }}>
+                  AI が Web で調べた場所です。地図で合っているか確認してください。
+                </div>
+              )}
               <a href={mapUrl(place)} target="_blank" rel="noreferrer" style={{ fontSize: "0.85rem" }}>
                 🗺️ 地図で場所を確認
               </a>

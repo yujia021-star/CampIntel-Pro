@@ -5,7 +5,8 @@ import { insertWithFallback } from "@/lib/db/compat";
 import { DiagnosisOutputSchema } from "@/lib/ai/schemas";
 import { finalizeDiagnosis } from "@/lib/diagnosis";
 import type { DiagnosisResult, DiaryEntry, Gear, PlaceRef } from "@/lib/domain";
-import { bestPlace, fetchElevation } from "@/lib/geo/places";
+import { bestPlace } from "@/lib/ai/place-lookup";
+import { fetchElevation } from "@/lib/geo/places";
 import { getUser } from "@/lib/supabase/server";
 import { parseDiagnoseInput } from "@/lib/validation/plan";
 import { fetchForecast, type ForecastResult } from "@/lib/weather/forecast";
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
 
     // 場所を選んでいれば、標高と天気予報をサーバー側で取り直す（クライアントの表示値は信用しない）。
     // 選ばずに診断した場合も、名前からいちばん当てはまる場所を自動で選んで予報を使う。
-    const found = parsed.place ? null : await bestPlace(plan.campsite);
+    const found = parsed.place ? null : await bestPlace(supabase, user.id, plan.campsite);
     const place = parsed.place ?? (found && { name: found.name, address: found.address, lat: found.lat, lon: found.lon });
     const [gearsRes, diaryRes, elevation, weather] = await Promise.all([
       supabase.from("gears").select("*").order("created_at"),
