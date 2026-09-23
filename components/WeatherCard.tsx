@@ -63,11 +63,16 @@ export function WeatherCard({ weather, title = "🌦️ 天気予報" }: { weath
 
       {f.hours.length > 0 && (
         <>
-          <h3>滞在中の3時間ごとの予報</h3>
+          <h3>滞在中（{f.window ?? "初日12時〜翌日12時"}）の3時間ごとの予報</h3>
           <div className="wx-timeline">
             {f.hours.map((h) => (
               <div key={h.time} className="wx-hour">
-                <div className="muted">{`${Number(h.time.slice(11, 13))}時`}</div>
+                <div className="muted">
+                  {h.time.slice(11, 13) === "00" || h.time === f.hours[0].time
+                    ? `${dayLabel(h.time.slice(0, 10)).replace(/\(.\)$/, "")} `
+                    : ""}
+                  {`${Number(h.time.slice(11, 13))}時`}
+                </div>
                 <div className="wx-icon" title={h.weather}>
                   {h.icon}
                 </div>

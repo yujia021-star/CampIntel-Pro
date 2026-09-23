@@ -52,12 +52,22 @@ export interface DiaryEntry {
   good_gear: string[];
   bad_gear: string[];
   note: string | null;
+  /** 泊数（0=デイ）。以前の記録は null */
+  nights?: number | null;
+  /** もとになった診断（camp_plans.id） */
+  plan_id?: string | null;
   created_at: string;
 }
+
+/** 泊数（0 = デイキャンプ） */
+export const NIGHTS_OPTIONS = [0, 1, 2] as const;
+export const NIGHTS_LABELS: Record<number, string> = { 0: "デイキャンプ", 1: "1泊", 2: "2泊" };
+export const NIGHTS_ICONS: Record<number, string> = { 0: "🌞", 1: "🌙", 2: "🌙🌙" };
 
 /** 診断フォームの入力（camp_plans の列に対応） */
 export interface CampPlanInput {
   campsite: string;
+  nights: number;
   elevation_m: number | null;
   terrain: string | null;
   ground: string | null;
@@ -149,6 +159,8 @@ export interface DiagnosisResult {
   diary_count_used: number;
   /** 診断時に使った場所と天気予報（履歴で後から見返せるように保存） */
   location?: PlaceRef | null;
+  /** 滞在の日程（初日・最終日・泊数） */
+  stay?: { nights: number; start: string | null; end: string | null } | null;
   conditions?: SiteConditions | null;
   weather?: import("@/lib/weather/forecast").ForecastResult | null;
 }

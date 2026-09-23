@@ -12,7 +12,7 @@ import {
   type RiskBasis,
   RISK_BASES,
 } from "@/lib/domain";
-import type { ForecastResult } from "@/lib/weather/forecast";
+import { addDays, type ForecastResult } from "@/lib/weather/forecast";
 import { normalizeTags } from "@/lib/tags";
 
 /** AIが返す生の診断結果（lib/ai/schemas.ts の DiagnosisOutputSchema と同形） */
@@ -105,6 +105,12 @@ export function countBySeverity(risks: Risk[]): { high: number; mid: number; low
     mid: risks.filter((r) => r.severity === 3).length,
     low: risks.filter((r) => r.severity <= 2).length,
   };
+}
+
+/** 滞在の日程（初日・最終日・泊数） */
+export function stayOf(plan: Pick<CampPlanInput, "nights" | "planned_date">): NonNullable<DiagnosisResult["stay"]> {
+  const start = plan.planned_date;
+  return { nights: plan.nights, start, end: start ? addDays(start, plan.nights) : null };
 }
 
 const blank = (v: string | null | undefined) => !v || !v.trim() || v.trim() === "不明";
@@ -207,6 +213,7 @@ export function finalizeDiagnosis(
     total_count,
     diary_count_used: diaryCountUsed,
     location: context.location ?? null,
+    stay: context.plan ? stayOf(context.plan) : null,
     conditions: context.plan ? buildConditions(context.plan, raw, context.location, context.weather) : null,
     weather: context.weather ?? null,
   };

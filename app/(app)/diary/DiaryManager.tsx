@@ -1,9 +1,36 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { createDiaryEntry, deleteDiaryEntry } from "@/lib/actions/diary";
 import { computeBadges, newlyEarnedBadge } from "@/lib/badges";
-import { BUGS, TEMP_FEELS, WEATHERS, type Bugs, type DiaryEntry, type TempFeel, type Weather } from "@/lib/domain";
+import {
+  BUGS,
+  NIGHTS_ICONS,
+  NIGHTS_LABELS,
+  NIGHTS_OPTIONS,
+  TEMP_FEELS,
+  WEATHERS,
+  type Bugs,
+  type DiaryEntry,
+  type TempFeel,
+  type Weather,
+} from "@/lib/domain";
+
+/** 日記の表示・入力に使う、もとになった診断の要点 */
+export interface PlanSummary {
+  id: string;
+  campsite: string;
+  planned_date: string | null;
+  nights: number | null;
+  /** 診断のときの予報（滞在中の集計）。予報がなかった診断は null */
+  forecast: { temp_min: number | null; temp_max: number | null; precip_prob_max: number | null } | null;
+}
+
+function forecastText(f: NonNullable<PlanSummary["forecast"]>): string {
+  return `最低${f.temp_min ?? "?"}℃〜最高${f.temp_max ?? "?"}℃・降水確率${f.precip_prob_max ?? "?"}%`;
+}
 
 const WEATHER_ICON: Record<Weather, string> = { 晴れ: "☀️", 曇り: "☁️", 雨: "🌧️" };
 const TEMP_ICON: Record<TempFeel, string> = { 寒すぎ: "🥶", ちょうどいい: "😊", 暑すぎ: "🥵" };
@@ -54,11 +81,25 @@ function GearChips({ names, selected, onToggle, bad }: { names: string[]; select
   );
 }
 
-export function DiaryManager({ entries, gearNames }: { entries: DiaryEntry[]; gearNames: string[] }) {
+export function DiaryManager({
+  entries,
+  gearNames,
+  plans = {},
+  fromPlan = null,
+}: {
+  entries: DiaryEntry[];
+  gearNames: string[];
+  plans?: Record<string, PlanSummary>;
+  /** 「この計画の日記を書く」から来たときの診断 */
+  fromPlan?: PlanSummary | null;
+}) {
+  const router = useRouter();
   const badges = useMemo(() => computeBadges(entries), [entries]);
 
-  const [date, setDate] = useState(today);
-  const [campsite, setCampsite] = useState("");
+  const [date, setDate] = useState(() => fromPlan?.planned_date ?? today());
+  const [campsite, setCampsite] = useState(fromPlan?.campsite ?? "");
+  const [nights, setNights] = useState<number>(fromPlan?.nights ?? 1);
+  const [linkedPlan, setLinkedPlan] = useState<PlanSummary | null>(fromPlan);
   const [weather, setWeather] = useState<Weather | null>(null);
   const [tempFeel, setTempFeel] = useState<TempFeel | null>(null);
   const [bugs, setBugs] = useState<Bugs | null>(null);
@@ -81,8 +122,14 @@ export function DiaryManager({ entries, gearNames }: { entries: DiaryEntry[]; ge
   }
 
   function save() {
-    if (!weather || !tempFeel || !bugs || !sleep) {
-      setError("天候・体感温度・虫の多さ・眠りの質をタップで選んでください");
+    // デイキャンプは泊まらないので眠りの質は聞かない（DBは必須なので中間の3で保存し、AIには渡さない）
+    const sleepQuality = nights === 0 ? 3 : sleep;
+    if (!weather || !tempFeel || !bugs || !sleepQuality) {
+      setError(
+        nights === 0
+          ? "天候・体感温度・虫の多さをタップで選んでください"
+          : "天候・体感温度・虫の多さ・眠りの質をタップで選んでください",
+      );
       return;
     }
     setError(null);
@@ -92,10 +139,12 @@ export function DiaryManager({ entries, gearNames }: { entries: DiaryEntry[]; ge
       weather,
       temp_feel: tempFeel,
       bugs,
-      sleep_quality: sleep,
+      sleep_quality: sleepQuality,
       good_gear: good,
       bad_gear: bad,
       note,
+      nights,
+      plan_id: linkedPlan?.id ?? null,
     };
     startTransition(async () => {
       const r = await createDiaryEntry(input);
@@ -110,6 +159,9 @@ export function DiaryManager({ entries, gearNames }: { entries: DiaryEntry[]; ge
           : `🔥 通算${entries.length + 1}回目の記録、お疲れさまでした`,
       );
       setCampsite("");
+      setLinkedPlan(null);
+      // 計画から来たときの ?plan= を消して、次は普通の記録にする
+      if (fromPlan) router.replace("/diary");
       setNote("");
       setWeather(null);
       setTempFeel(null);
@@ -136,17 +188,41 @@ export function DiaryManager({ entries, gearNames }: { entries: DiaryEntry[]; ge
 
       <div className="card">
         <h2>📔 今日の記録</h2>
+        {linkedPlan && (
+          <div className="place-selected" style={{ marginTop: 0, marginBottom: 8 }}>
+            📋 「{linkedPlan.campsite}」の診断から記録します
+            {linkedPlan.forecast && (
+              <div className="muted" style={{ fontSize: "0.8rem" }}>
+                診断のときの予報: {forecastText(linkedPlan.forecast)}
+              </div>
+            )}
+            <div className="hint">予報と実際の体感の差を、次の診断で活かします。</div>
+            <button type="button" className="btn btn-danger btn-sm" style={{ paddingLeft: 0 }} onClick={() => setLinkedPlan(null)}>
+              ひも付けを外す
+            </button>
+          </div>
+        )}
         <label htmlFor="d-site" style={{ marginTop: 0 }}>
           キャンプ場名（任意）
         </label>
         <input id="d-site" value={campsite} maxLength={100} placeholder="例: WOODSMAN CAMPGROUND" onChange={(e) => setCampsite(e.target.value)} />
-        <label htmlFor="d-date">日付</label>
+        <label>滞在</label>
+        <div className="choice-row" role="group" aria-label="滞在">
+          {NIGHTS_OPTIONS.map((n) => (
+            <button key={n} type="button" className="choice-btn" aria-pressed={nights === n} onClick={() => setNights(n)}>
+              {NIGHTS_ICONS[n]} {NIGHTS_LABELS[n]}
+            </button>
+          ))}
+        </div>
+        <label htmlFor="d-date">{nights === 0 ? "日付" : "初日"}</label>
         <input id="d-date" type="date" value={date} required onChange={(e) => setDate(e.target.value)} />
 
         <ChoiceRow label="天候" options={WEATHERS} icons={WEATHER_ICON} value={weather} onChange={setWeather} />
         <ChoiceRow label="体感温度" options={TEMP_FEELS} icons={TEMP_ICON} value={tempFeel} onChange={setTempFeel} />
         <ChoiceRow label="虫の多さ" options={BUGS} icons={BUGS_ICON} value={bugs} onChange={setBugs} />
 
+{nights > 0 && (
+          <>
         <label>眠りの質</label>
         <div className="star-row" role="group" aria-label="眠りの質">
           {[1, 2, 3, 4, 5].map((n) => (
@@ -155,6 +231,8 @@ export function DiaryManager({ entries, gearNames }: { entries: DiaryEntry[]; ge
             </button>
           ))}
         </div>
+          </>
+        )}
 
         <label>良かったギア（タップで選択）</label>
         <GearChips names={gearNames} selected={good} onToggle={(n) => toggle(n, "good")} />
@@ -179,16 +257,24 @@ export function DiaryManager({ entries, gearNames }: { entries: DiaryEntry[]; ge
               <div style={{ minWidth: 0 }}>
                 <div className="diary-meta">
                   {e.date}
+                  {e.nights != null ? ` ・ ${NIGHTS_ICONS[e.nights]} ${NIGHTS_LABELS[e.nights]}` : ""}
                   {e.campsite ? ` ・ ${e.campsite}` : ""}
                 </div>
                 <div className="diary-tags">
                   {WEATHER_ICON[e.weather]} {e.weather}　{TEMP_ICON[e.temp_feel]} {e.temp_feel}　🦟 {e.bugs}
-                  {"★".repeat(e.sleep_quality)}
-                  {"☆".repeat(5 - e.sleep_quality)}
+                  {e.nights !== 0 && `${"★".repeat(e.sleep_quality)}${"☆".repeat(5 - e.sleep_quality)}`}
                 </div>
                 {e.good_gear.length > 0 && <div className="diary-tags">👍 {e.good_gear.join("、")}</div>}
                 {e.bad_gear.length > 0 && <div className="diary-tags">👎 {e.bad_gear.join("、")}</div>}
                 {e.note && <div className="diary-note">{e.note}</div>}
+                {e.plan_id && plans[e.plan_id] && (
+                  <div className="diary-tags muted" style={{ fontSize: "0.8rem" }}>
+                    {plans[e.plan_id].forecast
+                      ? `🌡️ 予報 ${forecastText(plans[e.plan_id].forecast!)} → 体感: ${e.temp_feel}　`
+                      : ""}
+                    <Link href={`/history/${e.plan_id}`}>診断を見る</Link>
+                  </div>
+                )}
               </div>
               <button
                 className="btn btn-danger btn-sm"

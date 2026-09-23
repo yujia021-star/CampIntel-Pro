@@ -25,6 +25,7 @@ const optNumber = (min: number, max: number) =>
 
 export const CampPlanInputSchema = z.object({
   campsite: z.string().trim().min(1, "キャンプ場名を入力してください").max(100),
+  nights: z.preprocess((v) => (v === undefined || v === null || v === "" ? 1 : Number(v)), z.number().int().min(0).max(2)),
   elevation_m: optNumber(-100, 4000).transform((v) => (v === null ? null : Math.round(v))),
   terrain: optText(50),
   ground: optText(50),

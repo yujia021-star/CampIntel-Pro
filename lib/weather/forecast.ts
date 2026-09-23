@@ -1,7 +1,7 @@
 import { weatherLabel } from "./codes";
 
 // 天気予報（Open-Meteo, https://open-meteo.com/ ）。APIキー不要・非商用無料・CC BY 4.0。
-// キャンプは1泊を想定し、予定日の昼〜翌日の昼を「滞在時間帯」として扱う。
+// 滞在時間帯: デイキャンプ(0泊)は当日9時〜18時、N泊は初日12時〜N日後の12時。
 
 export const FORECAST_MAX_DAYS = 16;
 
@@ -32,7 +32,11 @@ export interface Forecast {
   source: "open-meteo";
   fetched_at: string;
   days: ForecastDay[];
-  /** 滞在時間帯（予定日12時〜翌日12時）を3時間ごと */
+  /** 泊数（0=デイキャンプ） */
+  nights?: number;
+  /** 滞在時間帯の説明（例:「初日12時〜翌日12時」） */
+  window?: string;
+  /** 滞在時間帯を3時間ごと */
   hours: ForecastHour[];
   /** 滞在時間帯の集計（リスク判断とプロンプト用） */
   stay: {
@@ -49,7 +53,22 @@ export type ForecastResult =
   | { available: true; forecast: Forecast }
   | { available: false; reason: "no_date" | "past" | "too_far" | "error"; message: string };
 
-function addDays(date: string, days: number): string {
+export const MAX_NIGHTS = 2;
+
+/** 泊数を 0〜2 に丸める（不正な値は1泊） */
+export function clampNights(nights: unknown): number {
+  const n = Number(nights);
+  return Number.isInteger(n) && n >= 0 && n <= MAX_NIGHTS ? n : 1;
+}
+
+/** 滞在時間帯（開始・終了の "YYYY-MM-DDTHH:00"）と説明 */
+export function stayWindow(date: string, nights: number): { start: string; end: string; label: string } {
+  if (nights === 0) return { start: `${date}T09:00`, end: `${date}T18:00`, label: "当日9時〜18時" };
+  const endLabel = nights === 1 ? "翌日" : `${nights + 1}日目`;
+  return { start: `${date}T12:00`, end: `${addDays(date, nights)}T12:00`, label: `初日12時〜${endLabel}12時` };
+}
+
+export function addDays(date: string, days: number): string {
   const d = new Date(`${date}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
@@ -60,22 +79,23 @@ export function todayJst(now = new Date()): string {
   return new Date(now.getTime() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 }
 
-/** 予定日に予報を出せるかを判定する */
-export function forecastAvailability(date: string | null, now = new Date()): ForecastResult | null {
+/** 予定日に予報を出せるかを判定する（最終日まで予報の範囲に入っている必要がある） */
+export function forecastAvailability(date: string | null, now = new Date(), nights = 1): ForecastResult | null {
   if (!date) return { available: false, reason: "no_date", message: "予定日を入れると天気予報を表示します。" };
   const today = todayJst(now);
   if (date < today) return { available: false, reason: "past", message: "予定日が過去のため、予報はありません。" };
-  if (date > addDays(today, FORECAST_MAX_DAYS - 2)) {
+  const lastStart = FORECAST_MAX_DAYS - 2 - Math.max(0, nights - 1);
+  if (date > addDays(today, lastStart)) {
     return {
       available: false,
       reason: "too_far",
-      message: `天気予報は${FORECAST_MAX_DAYS - 2}日先までです。近づいたらもう一度診断してください。`,
+      message: `この日程の天気予報は、初日が${lastStart}日先以内になると出ます。近づいたらもう一度診断してください。`,
     };
   }
   return null;
 }
 
-export function forecastUrl(lat: number, lon: number, date: string): string {
+export function forecastUrl(lat: number, lon: number, date: string, nights = 1): string {
   const params = new URLSearchParams({
     latitude: lat.toFixed(4),
     longitude: lon.toFixed(4),
@@ -85,7 +105,7 @@ export function forecastUrl(lat: number, lon: number, date: string): string {
     timezone: "Asia/Tokyo",
     wind_speed_unit: "ms",
     start_date: date,
-    end_date: addDays(date, 1),
+    end_date: addDays(date, nights),
   });
   return `https://api.open-meteo.com/v1/forecast?${params}`;
 }
@@ -126,7 +146,7 @@ interface OpenMeteoResponse {
 }
 
 /** Open-Meteo の応答を画面・プロンプト用の形にする */
-export function parseForecast(json: OpenMeteoResponse, date: string, fetchedAt = new Date()): Forecast {
+export function parseForecast(json: OpenMeteoResponse, date: string, fetchedAt = new Date(), nights = 1): Forecast {
   const d = json.daily ?? {};
   const days: ForecastDay[] = (d.time ?? []).map((t, i) => {
     const w = weatherLabel(num(d.weather_code?.[i]));
@@ -144,8 +164,7 @@ export function parseForecast(json: OpenMeteoResponse, date: string, fetchedAt =
   });
 
   const h = json.hourly ?? {};
-  const start = `${date}T12:00`;
-  const end = `${addDays(date, 1)}T12:00`;
+  const { start, end, label } = stayWindow(date, nights);
   const stayHours: ForecastHour[] = [];
   (h.time ?? []).forEach((t, i) => {
     if (t < start || t > end) return;
@@ -170,6 +189,8 @@ export function parseForecast(json: OpenMeteoResponse, date: string, fetchedAt =
   return {
     source: "open-meteo",
     fetched_at: fetchedAt.toISOString(),
+    nights,
+    window: label,
     days,
     // 画面では3時間ごとに間引く（集計は1時間ごとの全データで行う）
     hours: stayHours.filter((x) => Number(x.time.slice(11, 13)) % 3 === 0),
@@ -185,13 +206,18 @@ export function parseForecast(json: OpenMeteoResponse, date: string, fetchedAt =
 }
 
 /** 予報を取得する（サーバー側で呼ぶ） */
-export async function fetchForecast(lat: number, lon: number, date: string | null): Promise<ForecastResult> {
-  const unavailable = forecastAvailability(date);
+export async function fetchForecast(
+  lat: number,
+  lon: number,
+  date: string | null,
+  nights = 1,
+): Promise<ForecastResult> {
+  const unavailable = forecastAvailability(date, new Date(), nights);
   if (unavailable) return unavailable;
   try {
-    const res = await fetch(forecastUrl(lat, lon, date!), { signal: AbortSignal.timeout(8000) });
+    const res = await fetch(forecastUrl(lat, lon, date!, nights), { signal: AbortSignal.timeout(8000) });
     if (!res.ok) throw new Error(`open-meteo ${res.status}`);
-    return { available: true, forecast: parseForecast(await res.json(), date!) };
+    return { available: true, forecast: parseForecast(await res.json(), date!, new Date(), nights) };
   } catch (error) {
     console.error("[forecast]", error);
     return { available: false, reason: "error", message: "天気予報を取得できませんでした。時間をおいてお試しください。" };

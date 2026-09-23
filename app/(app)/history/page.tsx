@@ -1,16 +1,16 @@
 import Link from "next/link";
 import { riskVerdict } from "@/lib/diagnosis";
-import type { CampPlan } from "@/lib/domain";
+import { NIGHTS_ICONS, NIGHTS_LABELS, type CampPlan } from "@/lib/domain";
 import { getUser } from "@/lib/supabase/server";
 
 export default async function HistoryPage() {
   const { supabase } = await getUser();
   const { data } = await supabase
     .from("camp_plans")
-    .select("id, campsite, planned_date, result, created_at")
+    .select("*")
     .order("created_at", { ascending: false })
     .limit(100);
-  const plans = (data ?? []) as Pick<CampPlan, "id" | "campsite" | "planned_date" | "result" | "created_at">[];
+  const plans = (data ?? []) as CampPlan[];
 
   return (
     <div className="card">
@@ -23,6 +23,7 @@ export default async function HistoryPage() {
             <div>
               <div style={{ fontWeight: 700 }}>{p.campsite}</div>
               <div className="muted">
+                {p.nights != null && `${NIGHTS_ICONS[p.nights]} ${NIGHTS_LABELS[p.nights]}・`}
                 {p.planned_date ?? "日付未定"}・診断日 {new Date(p.created_at).toLocaleDateString("ja-JP")}
               </div>
             </div>

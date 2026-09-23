@@ -1,4 +1,4 @@
-import { type CampPlanInput, type DiaryEntry, type Gear, type PlaceRef } from "@/lib/domain";
+import { NIGHTS_LABELS, type CampPlanInput, type DiaryEntry, type Gear, type PlaceRef } from "@/lib/domain";
 import type { ForecastResult } from "@/lib/weather/forecast";
 
 // プロトタイプの combinedInput / diarySummary を移植したもの。
@@ -24,6 +24,9 @@ export const DIAGNOSIS_SYSTEM = `あなたはプロのキャンプアドバイ�
    - 各リスクに、何をもとに判断したかを basis で示す: forecast=【天気予報】の数値、terrain=標高・地形・地面、season_region=季節と地域の一般的な傾向、diary=過去の日記、input=ユーザーの入力内容（移動手段・同行者など）。
    - 【天気予報】がある場合、気温・降水・風のリスクは必ずその数値を根拠にし、risk の文中に数値を入れる（例:「夜間最低2℃、結露と冷え込みに注意」）。予報がない場合は forecast を使わない。
    - クマ・ハチ・虫などの生物リスクは、季節と地域の一般的な傾向として述べる（basis=season_region）。最近の出没情報や事故など、与えられていない具体的な事実は作らない。
+   - 滞在タイプに合わせる:
+     デイキャンプ（日帰り）: 就寝や夜間に関するリスク・装備（寝袋・マット・夜の冷え込み・結露など）は挙げない。日差し・熱中症・日中の雨風・撤収時刻・帰りの運転の疲れを重視する。
+     連泊: 日ごとの天気の変化（2日目以降の雨・風・冷え込み）、泊数分の食料・水・燃料・着替え、濡れた装備を乾かせるか、ゴミの量を考える。
 2. 今回のキャンプで推奨されるギアタグを recommended_tags に抽出する（#記号なしの日本語の単語）。
 3. 所持ギア一覧の中から、表記揺れ・類義語・関連する上位/下位概念も考慮し、推奨タグに合致するものを柔軟に判定する。
 4. カテゴリ別パッキングリスト（packing_list）を作る。
@@ -32,13 +35,20 @@ export const DIAGNOSIS_SYSTEM = `あなたはプロのキャンプアドバイ�
    - 賄えないものは具体的な商品名を item にして、gear_id は null にする。
    - 各アイテムに priority を付ける: must=安全・快適さに直結し必須、recommended=あると安心、optional=余裕があれば任意。
    - 「定番装備」と記載された所持ギアは、今回の条件に関わらず必ず含める。
-5. 全体を踏まえた総合アドバイス（overall_advice）を150字程度で書く。何を優先すべきか、リスクへの向き合い方を含める。過去の日記がある場合は、その傾向を踏まえる（例えば「寒すぎ」が多ければ防寒をより手厚く提案する）。`;
+   - デイキャンプなら寝具など泊まりの装備は入れない。連泊なら食料・水・燃料・着替えは泊数分の量を意識する。
+5. 全体を踏まえた総合アドバイス（overall_advice）を150字程度で書く。何を優先すべきか、リスクへの向き合い方を含める。過去の日記がある場合は、その傾向を踏まえる（例えば「寒すぎ」が多ければ防寒をより手厚く提案する）。
+   日記に「予報」と「体感」の両方がある場合は、その差をこの人の感じ方の傾向として使う（例: 予報の最低8℃で「寒すぎ」だったなら、今回も予報より寒く感じる前提で防寒を手厚くする）。`;
 
 function fmt(value: string | number | null | undefined, unit = ""): string {
   return value === null || value === undefined || value === "" ? "未入力" : `${value}${unit}`;
 }
 
-export function diarySummary(entries: DiaryEntry[]): string {
+/** 日記に、もとになった診断の予報（滞在中の集計）を添えたもの */
+export type DiaryWithForecast = DiaryEntry & {
+  forecast?: { temp_min: number | null; temp_max: number | null; precip_prob_max: number | null } | null;
+};
+
+export function diarySummary(entries: DiaryWithForecast[]): string {
   if (entries.length === 0) return "";
   const lines = entries
     .map((e) => {
@@ -46,8 +56,16 @@ export function diarySummary(entries: DiaryEntry[]): string {
         `体感:${e.temp_feel}`,
         `虫:${e.bugs}`,
         `天候:${e.weather}`,
-        `睡眠:★${e.sleep_quality}`,
       ];
+      // デイキャンプの眠りの質は入力していない（仮の値）ので渡さない
+      if (e.nights !== 0) parts.push(`睡眠:★${e.sleep_quality}`);
+      if (e.nights != null) parts.unshift(`滞在:${NIGHTS_LABELS[e.nights]}`);
+      const f = e.forecast;
+      if (f && (f.temp_min !== null || f.temp_max !== null)) {
+        parts.push(
+          `そのときの予報:最低${f.temp_min ?? "?"}℃/最高${f.temp_max ?? "?"}℃・降水確率${f.precip_prob_max ?? "?"}%`,
+        );
+      }
       if (e.bad_gear.length) parts.push(`合わなかった物:${e.bad_gear.join("・")}`);
       if (e.note) parts.push(`メモ:${e.note}`);
       return `- ${e.date} ${parts.join(", ")}`;
@@ -77,13 +95,13 @@ export function forecastSummary(weather: ForecastResult | null | undefined): str
   const s = f.stay;
   return `\n\n【天気予報（Open-Meteo、取得: ${f.fetched_at.slice(0, 16)}）】
 ${days}
-- 滞在時間帯（予定日12時〜翌日12時）: 気温${num(s.temp_min, "℃")}〜${num(s.temp_max, "℃")}、降水確率最大${num(s.precip_prob_max, "%")}、降水量合計${num(s.precip_total_mm, "mm")}、最大風速${num(s.wind_max_ms, "m/s")}、最大瞬間風速${num(s.gust_max_ms, "m/s")}`;
+- 滞在時間帯（${f.window ?? "初日12時〜翌日12時"}）: 気温${num(s.temp_min, "℃")}〜${num(s.temp_max, "℃")}、降水確率最大${num(s.precip_prob_max, "%")}、降水量合計${num(s.precip_total_mm, "mm")}、最大風速${num(s.wind_max_ms, "m/s")}、最大瞬間風速${num(s.gust_max_ms, "m/s")}`;
 }
 
 export function buildDiagnosisPrompt(
   plan: CampPlanInput,
   gears: Gear[],
-  diaries: DiaryEntry[],
+  diaries: DiaryWithForecast[],
   context: { location?: PlaceRef | null; weather?: ForecastResult | null } = {},
 ): string {
   const gearDesc = gears.length
@@ -106,7 +124,8 @@ export function buildDiagnosisPrompt(
 - 標高: ${fmt(plan.elevation_m, "m")}${context.location?.elevation_m != null ? `（国土地理院の標高データ: ${context.location.elevation_m}m）` : ""}
 - 地形: ${fmt(plan.terrain)}
 - 地面の性質: ${fmt(plan.ground)}
-- 予定日: ${fmt(plan.planned_date)}${temps.length ? ` (${temps.join(" / ")})` : ""}
+- 滞在: ${NIGHTS_LABELS[plan.nights] ?? "1泊"}
+- 予定日（初日）: ${fmt(plan.planned_date)}${temps.length ? ` (${temps.join(" / ")})` : ""}
 - 移動手段: ${fmt(plan.transport)}
 - 同行者: ${fmt(plan.companions)}
 - 今回のスタイル: ${fmt(plan.style)}${forecastSummary(context.weather)}${diarySummary(diaries)}
