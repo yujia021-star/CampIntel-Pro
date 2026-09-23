@@ -68,10 +68,10 @@ function stayText(stay: NonNullable<DiagnosisResult["stay"]>): string {
   return `${label}（${dayLabel(stay.start)}〜${dayLabel(stay.end)}）`;
 }
 
-function PlaceCard({ result }: { result: DiagnosisResult }) {
+function PlaceCard({ result, siteName }: { result: DiagnosisResult; siteName: string }) {
   const loc = result.location;
   const c: SiteConditions | null | undefined = result.conditions;
-  if (!loc && !c && !result.stay) return null;
+  if (!loc && !c && !result.stay && !siteName) return null;
   const temp =
     c && (c.temp_min !== null || c.temp_max !== null) ? `${c.temp_min ?? "?"}〜${c.temp_max ?? "?"}℃` : null;
   return (
@@ -96,6 +96,23 @@ function PlaceCard({ result }: { result: DiagnosisResult }) {
             <a className="link-chip" href={routeLinks(loc).apple} target="_blank" rel="noreferrer">
               🍎 Appleマップで行き方
             </a>
+          </div>
+        </div>
+      )}
+      {siteName && (
+        <div style={{ marginBottom: 8 }}>
+          <div className="cond-label" style={{ fontSize: "0.85rem" }}>
+            🏕️ 予約・空き状況
+          </div>
+          <div className="link-row">
+            {reserveLinks(siteName).map((l) => (
+              <a key={l.label} className="link-chip" href={l.url} target="_blank" rel="noreferrer">
+                {l.icon} {l.label}
+              </a>
+            ))}
+          </div>
+          <div className="hint" style={{ marginTop: 0 }}>
+            予約サイトにはアプリから直接予約できる仕組みがないため、検索結果を開きます。
           </div>
         </div>
       )}
@@ -145,7 +162,7 @@ export function DiagnosisView({
 
   return (
     <section>
-      <PlaceCard result={result} />
+      <PlaceCard result={result} siteName={siteName} />
       {result.weather && <WeatherCard weather={result.weather} title="🌦️ 診断に使った天気予報" />}
       {result.location && (
         <NearbyCard location={result.location} companions={companions} fetchNames={!shared} />
@@ -292,21 +309,6 @@ export function DiagnosisView({
           })}
         </div>
       </div>
-      {siteName && (
-        <div className="card">
-          <h2>🏕️ 予約・空き状況</h2>
-          <div className="link-row">
-            {reserveLinks(siteName).map((l) => (
-              <a key={l.label} className="link-chip" href={l.url} target="_blank" rel="noreferrer">
-                {l.icon} {l.label}
-              </a>
-            ))}
-          </div>
-          <p className="hint" style={{ marginBottom: 0 }}>
-            予約サイトはアプリから直接予約できる仕組み（公開API）がないため、検索結果を開きます。
-          </p>
-        </div>
-      )}
       {planId && !shared && (
         <div className="card">
           <ShareButton planId={planId} title={siteName || "キャンプ"} />
