@@ -51,3 +51,17 @@ describe("buildDiagnosisPrompt", () => {
     expect(buildDiagnosisPrompt({ ...plan, nights: 2 }, [], [])).toContain("滞在: 2泊");
   });
 });
+
+describe("経験レベルのプロンプト", () => {
+  it("レベル・ブランク・体感のクセを渡す", async () => {
+    const { experienceSummary } = await import("./prompts");
+    const text = experienceSummary({
+      experience: { level: "intermediate", nights: 12, conditions: ["rain", "cold", "multi"], windows: [true, false, true, true], blank: true, next: [], reported: true },
+      tendency: { kind: "cold", summary: "予報より寒く感じやすいタイプ", detail: "3回中3回「寒すぎ」", samples: 3 },
+    });
+    expect(text).toContain("レベル: 中級（経験は十分だが");
+    expect(text).toContain("通算: 12泊");
+    expect(text).toContain("体感のクセ: 予報より寒く感じやすいタイプ");
+    expect(experienceSummary(null)).toBe("");
+  });
+});

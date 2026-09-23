@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { LEVEL_LABELS } from "@/lib/experience";
+import { loadExperience } from "@/lib/experience-server";
 import type { Place } from "@/lib/geo/places";
 import { getUser } from "@/lib/supabase/server";
 import { DiagnoseForm } from "./DiagnoseForm";
@@ -27,10 +29,12 @@ export default async function DiagnosePage({ searchParams }: { searchParams: Pro
       }
     : null;
 
-  const { supabase } = await getUser();
-  const [gears, diaries] = await Promise.all([
+  const { supabase, user } = await getUser();
+  const [gears, diaries, exp] = await Promise.all([
     supabase.from("gears").select("id", { count: "exact", head: true }),
     supabase.from("diary_entries").select("id", { count: "exact", head: true }),
+    // 経験レベルの表示だけなので、取れなくてもフォームは出す
+    loadExperience(supabase, user!).catch(() => null),
   ]);
   return (
     <DiagnoseForm
@@ -38,6 +42,14 @@ export default async function DiagnosePage({ searchParams }: { searchParams: Pro
       key={initialPlace ? `${initialPlace.id}-${prefill.data?.date}` : "blank"}
       gearCount={gears.count ?? 0}
       diaryCount={diaries.count ?? 0}
+      level={
+        exp
+          ? {
+              label: `${LEVEL_LABELS[exp.experience.level].icon} ${LEVEL_LABELS[exp.experience.level].name}`,
+              reported: Boolean(exp.report),
+            }
+          : null
+      }
       initialPlace={initialPlace}
       initialDate={prefill.success ? prefill.data.date ?? null : null}
     />

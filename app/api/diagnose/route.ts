@@ -6,6 +6,7 @@ import { DiagnosisOutputSchema } from "@/lib/ai/schemas";
 import { finalizeDiagnosis } from "@/lib/diagnosis";
 import type { DiagnosisResult, DiaryEntry, Gear, PlaceRef } from "@/lib/domain";
 import { bestPlace } from "@/lib/ai/place-lookup";
+import { loadExperience } from "@/lib/experience-server";
 import { fetchElevation } from "@/lib/geo/places";
 import { getUser } from "@/lib/supabase/server";
 import { parseDiagnoseInput } from "@/lib/validation/plan";
@@ -31,11 +32,13 @@ export async function POST(request: Request) {
     // 選ばずに診断した場合も、名前からいちばん当てはまる場所を自動で選んで予報を使う。
     const found = parsed.place ? null : await bestPlace(supabase, user.id, plan.campsite);
     const place = parsed.place ?? (found && { name: found.name, address: found.address, lat: found.lat, lon: found.lon });
-    const [gearsRes, diaryRes, elevation, weather] = await Promise.all([
+    const [gearsRes, diaryRes, elevation, weather, experience] = await Promise.all([
       supabase.from("gears").select("*").order("created_at"),
       supabase.from("diary_entries").select("*").order("date", { ascending: false }).limit(DIARY_LIMIT),
       place ? fetchElevation(place.lat, place.lon) : Promise.resolve(null),
       place ? fetchForecast(place.lat, place.lon, plan.planned_date, plan.nights) : Promise.resolve<ForecastResult | null>(null),
+      // 経験レベルが取れなくても診断はできるので、失敗は無視する
+      loadExperience(supabase, user).catch(() => null),
     ]);
     const location: PlaceRef | null = place ? { ...place, elevation_m: elevation, auto: Boolean(found) } : null;
     if (plan.elevation_m === null && elevation !== null) plan.elevation_m = elevation;
@@ -53,7 +56,7 @@ export async function POST(request: Request) {
       model: model(),
       max_tokens: 16000,
       system: DIAGNOSIS_SYSTEM,
-      messages: [{ role: "user", content: buildDiagnosisPrompt(plan, gears, diaries, { location, weather }) }],
+      messages: [{ role: "user", content: buildDiagnosisPrompt(plan, gears, diaries, { location, weather, experience }) }],
       output_config: { effort: "medium", format: zodOutputFormat(DiagnosisOutputSchema) },
     });
     const raw = requireParsed(response);

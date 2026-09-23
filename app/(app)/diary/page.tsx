@@ -1,6 +1,8 @@
 import type { CampPlan, DiagnosisResult, DiaryEntry } from "@/lib/domain";
+import { loadExperience } from "@/lib/experience-server";
 import { getUser } from "@/lib/supabase/server";
 import { DiaryManager, type PlanSummary } from "./DiaryManager";
+import { ExperienceCard } from "./ExperienceCard";
 
 /** 診断結果から、日記の表示・入力に使う要点だけを取り出す */
 function summarize(plan: Pick<CampPlan, "id" | "campsite" | "planned_date" | "nights"> & { result: DiagnosisResult | null }): PlanSummary {
@@ -15,11 +17,12 @@ function summarize(plan: Pick<CampPlan, "id" | "campsite" | "planned_date" | "ni
 }
 
 export default async function DiaryPage({ searchParams }: { searchParams: Promise<{ plan?: string }> }) {
-  const { supabase } = await getUser();
+  const { supabase, user } = await getUser();
   const { plan: fromPlanId } = await searchParams;
-  const [entries, gears] = await Promise.all([
+  const [entries, gears, exp] = await Promise.all([
     supabase.from("diary_entries").select("*").order("date", { ascending: false }).order("created_at", { ascending: false }),
     supabase.from("gears").select("name").order("name"),
+    loadExperience(supabase, user!), // (app) のレイアウトで未ログインは弾いている
   ]);
   const diaries = (entries.data ?? []) as DiaryEntry[];
 
@@ -31,11 +34,14 @@ export default async function DiaryPage({ searchParams }: { searchParams: Promis
   const plans = Object.fromEntries(((planRows ?? []) as CampPlan[]).map((p) => [p.id, summarize(p)]));
 
   return (
-    <DiaryManager
-      entries={diaries}
-      gearNames={(gears.data ?? []).map((g: { name: string }) => g.name)}
-      plans={plans}
-      fromPlan={fromPlanId ? (plans[fromPlanId] ?? null) : null}
-    />
+    <>
+      <ExperienceCard experience={exp.experience} tendency={exp.tendency} report={exp.report} />
+      <DiaryManager
+        entries={diaries}
+        gearNames={(gears.data ?? []).map((g: { name: string }) => g.name)}
+        plans={plans}
+        fromPlan={fromPlanId ? (plans[fromPlanId] ?? null) : null}
+      />
+    </>
   );
 }
