@@ -5,6 +5,7 @@ import type { ActionResult, GearInput } from "@/lib/actions/gear";
 import { CATEGORIES, CATEGORY_LABELS, type Category } from "@/lib/domain";
 import { resizeImageToBase64 } from "@/lib/image";
 import { parseTagInput } from "@/lib/tags";
+import { DetectedGearList, type DetectedGear } from "./DetectedGearList";
 
 const SUGGEST_DEBOUNCE_MS = 700;
 const SUGGEST_MIN_LENGTH = 2;
@@ -29,6 +30,8 @@ export function GearForm({ initial, submitLabel, onSubmit, onCancel, enableAi = 
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [recognizing, setRecognizing] = useState(false);
+  // 写真に複数のギアが写っていたときの候補一覧
+  const [detected, setDetected] = useState<DetectedGear[] | null>(null);
 
   // ユーザーが手動編集した項目は AI の提案で上書きしない（非同期レース対策）。
   // 応答が返ってきた時点の値を見るため state ではなく ref で持つ。
@@ -85,6 +88,7 @@ export function GearForm({ initial, submitLabel, onSubmit, onCancel, enableAi = 
   async function onPhoto(file: File) {
     setRecognizing(true);
     setError(null);
+    setDetected(null);
     setStatus("写真を解析中...");
     const seq = ++requestSeq.current;
     try {
@@ -101,16 +105,24 @@ export function GearForm({ initial, submitLabel, onSubmit, onCancel, enableAi = 
         setError(json?.message ?? `写真の解析に失敗しました（エラー ${res.status}）。時間をおいて再試行してください。`);
         return;
       }
-      if (!json.recognized) {
+      const items = (json.items ?? []) as DetectedGear[];
+      if (items.length === 0) {
         setStatus(null);
-        setError("この画像は認識できませんでした。別の写真を試してください。");
+        setError("キャンプギアが見つかりませんでした。別の写真を試してください。");
         return;
       }
-      // 写真認識は明示的な操作なので全項目を反映する（手動編集フラグもリセット）
-      skipSuggestFor.current = json.name;
-      setName(json.name);
-      setTagText(joinTags(json.tags));
-      setCategory(json.category);
+      if (items.length > 1) {
+        // 複数写っていたら一覧から選んでまとめて登録する
+        setStatus(null);
+        setDetected(items);
+        return;
+      }
+      // 1つだけなら従来どおりフォームに入れる（手動編集フラグもリセット）
+      const [item] = items;
+      skipSuggestFor.current = item.name;
+      setName(item.name);
+      setTagText(joinTags(item.tags));
+      setCategory(item.category);
       tagsEdited.current = false;
       categoryEdited.current = false;
       setStatus("写真から入力しました。内容を確認して「＋ ギアを追加」を押してください。");
@@ -180,6 +192,16 @@ export function GearForm({ initial, submitLabel, onSubmit, onCancel, enableAi = 
             }}
           />
         </label>
+      )}
+      {detected && (
+        <DetectedGearList
+          items={detected}
+          onCancel={() => setDetected(null)}
+          onDone={(count) => {
+            setDetected(null);
+            setStatus(`写真から ${count} 件のギアを登録しました。`);
+          }}
+        />
       )}
       <label htmlFor={`${uid}-category`}>カテゴリ</label>
       <select

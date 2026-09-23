@@ -9,7 +9,7 @@ Next.js (App Router) + Supabase + Claude API で動きます。
   - 移動手段・同行者・スタイルは「詳しく入力（任意）」に折りたたみ、前回の値をこの端末に保存
   - 各リスクに根拠（天気予報／標高・地形／季節・地域の一般的傾向／過去の日記／入力内容）を表示
   - 総合リスクレベルは各リスクの危険度（起こりやすさ×影響、1〜5）の最大値。平均だと重大なリスクが薄まるため
-- **マイギア**: ギア名入力の0.7秒後にAIがタグ・カテゴリを提案（手動編集した項目は上書きしない）／📷 写真から認識（Claude Vision）／定番装備フラグ
+- **マイギア**: ギア名入力の0.7秒後にAIがタグ・カテゴリを提案（手動編集した項目は上書きしない）／📷 写真から認識（Claude Vision。1枚に複数写っていれば一覧から選んでまとめて登録）／定番装備フラグ
 - **日記**: タップで記録、8種の達成バッジ、次回診断のプロンプトに反映
 - **履歴**: 過去の診断結果を閲覧・削除
 
@@ -44,7 +44,6 @@ Next.js (App Router) + Supabase + Claude API で動きます。
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase の anon / publishable key |
 | `ANTHROPIC_API_KEY` | Anthropic API キー（サーバー側のみで使用） |
 | `ANTHROPIC_MODEL` | 任意。既定は `claude-sonnet-5` |
-| `AI_HOURLY_LIMIT` | 任意。1ユーザー1時間あたりのAI呼び出し上限（既定 30） |
 
 ### 3. ローカル起動
 
@@ -88,7 +87,10 @@ npm run build
 | code | HTTP | 状況 |
 |---|---|---|
 | `invalid_json` | 502 | 構造化出力のパース失敗・出力が途中で切れた |
-| `rate_limited` | 429 | Anthropic 側のレート制限、またはアプリの1時間上限 |
+| `limit_reached` | 429 | アプリの1時間上限（診断20回・タグ提案150回・写真40回／ユーザー。`lib/ai/client.ts` の `HOURLY_LIMITS`） |
+| `rate_limited` | 429 | Anthropic 側のレート制限 |
+| `no_credit` | 402 | Anthropic のクレジット残高不足 |
+| `bad_api_key` | 500 | Anthropic の APIキーが無効 |
 | `refused` | 422 | モデルが応答を拒否 |
 | `overloaded` | 503 | Anthropic 側の過負荷 |
 | `api_error` | 502 | その他 |

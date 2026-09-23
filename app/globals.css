@@ -236,3 +236,9 @@ textarea { resize: vertical; min-height: 64px; }
 .more > summary::-webkit-details-marker { display: none; }
 .more > summary::before { content: "▸ "; }
 .more[open] > summary::before { content: "▾ "; }
+
+/* 写真から見つかった複数のギア */
+.detected { margin-top: 10px; background: var(--bg); border: 1px solid var(--accent); border-radius: 10px; padding: 12px; }
+.detected-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--border); }
+.detected-row.off { opacity: 0.5; }
+.detected-base { display: flex; align-items: center; gap: 4px; margin: 0; flex: 0 0 auto !important; font-size: 0.8rem; color: var(--text); white-space: nowrap; }
