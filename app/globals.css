@@ -287,3 +287,17 @@ textarea { resize: vertical; min-height: 64px; }
 .pack-owned summary .pack-head::after { content: " ▾"; color: var(--muted); font-weight: 400; }
 .pack-owned[open] summary .pack-head::after { content: " ▴"; }
 .pack-summary { font-size: 0.78rem; }
+
+/* キャンプ経験 */
+.exp-level { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.exp-icon { font-size: 2.2rem; }
+.exp-name { font-size: 1.2rem; font-weight: 700; }
+.exp-conds { display: flex; flex-wrap: wrap; gap: 4px 10px; justify-content: flex-end; font-size: 0.85rem; }
+.exp-on { color: var(--green); font-weight: 600; }
+.exp-off { color: var(--muted); }
+.exp-windows { display: inline-flex; align-items: center; gap: 4px; }
+.exp-box { width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg); }
+.exp-box.on { background: var(--green); border-color: var(--green); }
+.exp-next { margin: 10px 0; padding: 8px 10px; border-radius: 10px; background: rgba(201, 111, 62, 0.1); font-size: 0.88rem; }
+.exp-tendency { margin: 10px 0; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); font-size: 0.9rem; }
+.exp-form { margin-top: 6px; }

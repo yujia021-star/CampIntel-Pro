@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { DiagnosisView } from "@/components/DiagnosisView";
 import { LoadingOverlay } from "@/components/Loading";
@@ -86,12 +87,15 @@ export function DiagnoseForm({
   diaryCount,
   initialPlace = null,
   initialDate = null,
+  level = null,
 }: {
   gearCount: number;
   diaryCount: number;
   /** 天気の画面から来たときの場所と日付 */
   initialPlace?: Place | null;
   initialDate?: string | null;
+  /** 経験レベル（アドバイスの詳しさが変わる） */
+  level?: { label: string; reported: boolean } | null;
 }) {
   const [result, setResult] = useState<DiagnosisResult | null>(null);
   const [planId, setPlanId] = useState<string | null>(null);
@@ -406,6 +410,17 @@ export function DiagnoseForm({
 
         <p className="hint">
           マイギア {gearCount}件・日記（直近{Math.min(diaryCount, 5)}件）を診断に反映します
+          {level && (
+            <>
+              <br />
+              経験レベル「{level.label}」に合わせてアドバイスします
+              {!level.reported && (
+                <>
+                  （<Link href="/diary#experience">これまでの経験を教える</Link>）
+                </>
+              )}
+            </>
+          )}
         </p>
         {error && <p className="error">{error}</p>}
         <button className="btn btn-primary" type="submit" disabled={pending}>

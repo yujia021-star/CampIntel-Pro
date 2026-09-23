@@ -1,5 +1,6 @@
 import { NIGHTS_LABELS, type CampPlanInput, type DiaryEntry, type Gear, type PlaceRef } from "@/lib/domain";
 import type { ForecastResult } from "@/lib/weather/forecast";
+import { CONDITION_LABELS, LEVEL_LABELS, type Experience, type FeelTendency } from "@/lib/experience";
 
 // プロトタイプの combinedInput / diarySummary を移植したもの。
 // 注意: 出力形式は構造化出力のスキーマ（lib/ai/schemas.ts）で縛る。JSON構造の値の部分に
@@ -38,7 +39,13 @@ export const DIAGNOSIS_SYSTEM = `あなたはプロのキャンプアドバイ�
    - デイキャンプなら寝具など泊まりの装備は入れない。連泊なら食料・水・燃料・着替えは泊数分の量を意識する。
    - 各アイテムに consumable を付ける: 使うと減り毎回の補充・残量確認が要る物（ガス缶などの燃料・薪・炭・着火剤・食料・飲料水・氷・ゴミ袋・電池・ティッシュ・カイロ・虫よけ など）は true、繰り返し使う道具は false。
    - 消耗品は、所持ギアに同じ物があっても必ずリストに入れる（残量を確認するため。所持ギアで賄うなら gear_id を入れる）。所持しているストーブ・ランタンなどに要る燃料や電池も、消耗品として入れる。
-5. 全体を踏まえた総合アドバイス（overall_advice）を150字程度で書く。何を優先すべきか、リスクへの向き合い方を含める。過去の日記がある場合は、その傾向を踏まえる（例えば「寒すぎ」が多ければ防寒をより手厚く提案する）。
+5. 【この人の経験】のレベルに合わせて、説明の詳しさを変える（リスクの見落としはどのレベルでも許さない）:
+   - はじめて・ビギナー: 基本の手順や「なぜ必要か」も短く添える。当たり前に思えることも省かない。
+   - 中級: 標準的な説明。
+   - ベテラン: テントの張り方・ペグ・基本装備のような基本は省き、今回の場所・天気・日程に特有のリスクと判断材料だけを簡潔に書く。
+   - ブランクがある場合: 経験は尊重しつつ、久しぶりの時期があるので準備や手順の確認を一言添える。
+   - 体感のクセがある場合: 寒く感じやすいなら予報より一段寒い前提で、暑く感じやすいなら一段暑い前提で、防寒・暑さ対策を提案する。
+6. 全体を踏まえた総合アドバイス（overall_advice）を150字程度で書く。何を優先すべきか、リスクへの向き合い方を含める。過去の日記がある場合は、その傾向を踏まえる（例えば「寒すぎ」が多ければ防寒をより手厚く提案する）。
    日記に「予報」と「体感」の両方がある場合は、その差をこの人の感じ方の傾向として使う（例: 予報の最低8℃で「寒すぎ」だったなら、今回も予報より寒く感じる前提で防寒を手厚くする）。`;
 
 function fmt(value: string | number | null | undefined, unit = ""): string {
@@ -101,11 +108,27 @@ ${days}
 - 滞在時間帯（${f.window ?? "初日12時〜翌日12時"}）: 気温${num(s.temp_min, "℃")}〜${num(s.temp_max, "℃")}、降水確率最大${num(s.precip_prob_max, "%")}、降水量合計${num(s.precip_total_mm, "mm")}、最大風速${num(s.wind_max_ms, "m/s")}、最大瞬間風速${num(s.gust_max_ms, "m/s")}`;
 }
 
+/** 経験レベルと体感のクセをプロンプト用の文章にする */
+export function experienceSummary(exp: { experience: Experience; tendency: FeelTendency | null } | null | undefined): string {
+  if (!exp) return "";
+  const e = exp.experience;
+  const lines = [
+    `- レベル: ${LEVEL_LABELS[e.level].name}${e.blank ? "（経験は十分だが、この1年で行っていない時期がある＝ブランクあり）" : ""}`,
+    `- 通算: ${e.nights}泊、経験した条件: ${e.conditions.map((c) => CONDITION_LABELS[c]).join("・") || "なし"}`,
+  ];
+  if (exp.tendency) lines.push(`- 体感のクセ: ${exp.tendency.summary}（${exp.tendency.detail}）`);
+  return `\n\n【この人の経験】\n${lines.join("\n")}`;
+}
+
 export function buildDiagnosisPrompt(
   plan: CampPlanInput,
   gears: Gear[],
   diaries: DiaryWithForecast[],
-  context: { location?: PlaceRef | null; weather?: ForecastResult | null } = {},
+  context: {
+    location?: PlaceRef | null;
+    weather?: ForecastResult | null;
+    experience?: { experience: Experience; tendency: FeelTendency | null } | null;
+  } = {},
 ): string {
   const gearDesc = gears.length
     ? gears
@@ -131,7 +154,7 @@ export function buildDiagnosisPrompt(
 - 予定日（初日）: ${fmt(plan.planned_date)}${temps.length ? ` (${temps.join(" / ")})` : ""}
 - 移動手段: ${fmt(plan.transport)}
 - 同行者: ${fmt(plan.companions)}
-- 今回のスタイル: ${fmt(plan.style)}${forecastSummary(context.weather)}${diarySummary(diaries)}
+- 今回のスタイル: ${fmt(plan.style)}${forecastSummary(context.weather)}${experienceSummary(context.experience)}${diarySummary(diaries)}
 
 【ユーザーの所持ギア一覧】
 ${gearDesc}
