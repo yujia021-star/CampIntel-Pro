@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { prefectureOf, regionRisks, siteRisks, weatherRisks } from "./risks";
+import { prefectureOf, regionRisks, roadRisks, siteRisks, weatherRisks } from "./risks";
 
 const stay = (o: Partial<Parameters<typeof weatherRisks>[0]> = {}) => ({
   temp_min: 16,
@@ -84,5 +84,19 @@ describe("予報の変化", () => {
     const s = stay({ precip_prob_max: 40, temp_min: 10 });
     expect(forecastChanges(s, { ...s, precip_prob_max: 90, temp_min: 11 })).toEqual([{ label: "降水確率", from: "40%", to: "90%" }]);
     expect(forecastChanges(s, s)).toEqual([]);
+  });
+});
+
+describe("行き帰りの路面凍結", () => {
+  it("気温と雨・雪で危険度が上がる", () => {
+    expect(roadRisks({ minTemp: 5, wet: false, transport: "車" })).toEqual([]);
+    expect(roadRisks({ minTemp: 2.5, wet: false, transport: "車" })[0].severity).toBe(2);
+    expect(roadRisks({ minTemp: -1, wet: false, transport: "車" })[0].severity).toBe(3);
+    expect(roadRisks({ minTemp: -1, wet: true, transport: "車" })[0]).toMatchObject({ severity: 4, basis: "forecast" });
+  });
+
+  it("徒歩・公共交通機関や移動手段が分からないときは出さない", () => {
+    expect(roadRisks({ minTemp: -3, wet: true, transport: "徒歩・公共交通機関" })).toEqual([]);
+    expect(roadRisks({ minTemp: -3, wet: true, transport: null })).toEqual([]);
   });
 });

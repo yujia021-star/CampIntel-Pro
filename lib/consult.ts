@@ -1,5 +1,6 @@
 import { dayLabel } from "@/components/WeatherCard";
 import { isConsumable, NIGHTS_LABELS, type DiagnosisResult } from "@/lib/domain";
+import { staySun } from "@/lib/rules/sun";
 
 // 「いつものAIに相談」で、利用者自身のAI（Gemini・ChatGPTなど）に貼り付ける文章を作る。
 // アプリの判定結果と、その人の道具・クセをまとめて渡し、会話は相手のAIに任せる（こちらの料金はかからない）。
@@ -22,6 +23,8 @@ export function consultText(
   if (stay) {
     const when = stay.start ? `${dayLabel(stay.start)}${stay.end && stay.nights > 0 ? `〜${dayLabel(stay.end)}` : ""}` : "";
     lines.push(`日程：${[when, NIGHTS_LABELS[stay.nights], c.transport, c.companions].filter(Boolean).join("・")}`);
+    const sun = loc && stay.start ? staySun(loc.lat, loc.lon, stay.start, stay.nights) : null;
+    if (sun?.sunset) lines.push(`日の入り：${sun.sunset}ごろ${stay.nights > 0 && sun.sunrise ? `（翌朝の日の出${sun.sunrise}ごろ）` : ""}`);
   }
   const w = result.weather?.available ? result.weather.forecast.stay : null;
   if (w) {

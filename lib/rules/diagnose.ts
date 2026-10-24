@@ -3,7 +3,8 @@ import type { RawDiagnosis } from "@/lib/diagnosis";
 import { LEVEL_LABELS, type Experience, type FeelTendency } from "@/lib/experience";
 import type { ForecastResult } from "@/lib/weather/forecast";
 import { matchGears, packingRules } from "./packing";
-import { prefectureOf, regionRisks, siteRisks, weatherRisks } from "./risks";
+import { prefectureOf, regionRisks, roadRisks, siteRisks, weatherRisks } from "./risks";
+import { minusMinutes, staySun } from "./sun";
 
 // 診断をルールだけで組み立てる（AIを使わない）。結果はすぐ出て、料金0円、同じ条件なら毎回同じ。
 
@@ -23,7 +24,15 @@ const short = (r: Risk) => r.risk.split("。")[0];
 export function adviceText(
   risks: Risk[],
   counts: { needGear: number; consumables: number },
-  c: { level: Experience["level"] | null; blank: boolean; feelsCold: boolean; walking: boolean; nights: number },
+  c: {
+    level: Experience["level"] | null;
+    blank: boolean;
+    feelsCold: boolean;
+    walking: boolean;
+    nights: number;
+    /** 初日の日の入り（"H:MM"）。場所と日付が分かるとき */
+    sunset?: string | null;
+  },
 ): string {
   const lines: string[] = [];
   const top = [...risks].sort((a, b) => b.severity - a.severity)[0];
@@ -37,7 +46,15 @@ export function adviceText(
   );
   if (counts.consumables > 0) lines.push(`消耗品${counts.consumables}件は残りを確認してください。`);
   if (c.walking && c.nights > 0) lines.push("徒歩・公共交通機関なので、軽さを優先して荷物をしぼりましょう。");
-  if ((c.level === "first" || c.level === "beginner") && c.nights > 0) {
+  if (c.nights > 0 && c.sunset) {
+    // 山あいは平地より早く暗くなるので、日の入りの1時間前を目安にする
+    const beginner = c.level === "first" || c.level === "beginner" || c.level === null;
+    lines.push(
+      beginner
+        ? `日の入りは${c.sunset}ごろ。山あいは早く暗くなるので、設営は${minusMinutes(c.sunset, 60)}ごろまでに終えると安心です。`
+        : `日の入りは${c.sunset}ごろです。`,
+    );
+  } else if ((c.level === "first" || c.level === "beginner") && c.nights > 0) {
     lines.push("設営は明るいうち（15時ごろまで）に終えると安心です。");
   }
   if (c.blank) lines.push("久しぶりの時期があるので、出発前に道具の動作を確認しておきましょう。");
@@ -57,10 +74,17 @@ export function ruleDiagnosis(input: RuleInput): RawDiagnosis & { personal: { le
     transport: plan.transport,
     companions: plan.companions,
   };
-  const weatherList = forecast ? weatherRisks(forecast.stay, plan.nights, labels) : [];
+  // 行き帰りの早朝も含めるため、日ごとの最低気温も見る
+  const dayMins = (forecast?.days ?? []).map((d) => d.temp_min).filter((t): t is number => t !== null);
+  const minTemp = dayMins.length ? Math.min(...dayMins) : (forecast?.stay.temp_min ?? null);
+  const wet =
+    (forecast?.days ?? []).some((d) => (d.precip_sum_mm ?? 0) >= 1) || labels.some((l) => /雨|雪/.test(l));
+  const weatherList = forecast
+    ? [...weatherRisks(forecast.stay, plan.nights, labels), ...roadRisks({ minTemp, wet, transport: plan.transport })]
+    : [];
   const region = regionRisks(site);
   const siteList = siteRisks(site);
-  const environment = [...weatherList, ...siteList.filter((r) => r.basis === "terrain")];
+  const environment = [...weatherList, ...siteList.filter((r) => r.basis === "terrain")].sort((a, b) => b.severity - a.severity);
   const bio = [...region, ...siteList.filter((r) => r.basis !== "terrain")];
   const feelsCold = experience?.tendency?.kind === "cold";
 
@@ -90,6 +114,7 @@ export function ruleDiagnosis(input: RuleInput): RawDiagnosis & { personal: { le
       feelsCold,
       walking: Boolean(plan.transport && /徒歩|公共交通/.test(plan.transport)),
       nights: plan.nights,
+      sunset: location && plan.planned_date ? staySun(location.lat, location.lon, plan.planned_date, plan.nights).sunset : null,
     }),
     personal: {
       level: experience ? LEVEL_LABELS[experience.experience.level].name : null,

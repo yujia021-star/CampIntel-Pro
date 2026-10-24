@@ -18,6 +18,7 @@ import {
   type SiteConditions,
 } from "@/lib/domain";
 import { hasAffiliate, reserveLinks, routeLinks, shopLinks, type AffiliateIds } from "@/lib/links";
+import { staySun } from "@/lib/rules/sun";
 
 const PRIORITY_ORDER: Record<Priority, number> = { must: 0, recommended: 1, optional: 2 };
 
@@ -76,6 +77,11 @@ function PlaceCard({ result, siteName }: { result: DiagnosisResult; siteName: st
   if (!loc && !c && !result.stay && !siteName) return null;
   const temp =
     c && (c.temp_min !== null || c.temp_max !== null) ? `${c.temp_min ?? "?"}〜${c.temp_max ?? "?"}℃` : null;
+  const nights = result.stay?.nights ?? 0;
+  const st = loc && result.stay?.start ? staySun(loc.lat, loc.lon, result.stay.start, nights) : null;
+  // デイキャンプは日の入りだけ、泊まりは翌朝の日の出も
+  const sun = st?.sunset ? `${st.sunset}${nights > 0 && st.sunrise ? `／${st.sunrise}` : ""}` : null;
+  const sunLabel = nights > 0 ? "日の入り／翌朝の日の出" : "日の入り";
   return (
     <div className="card">
       <h2>📍 診断した場所と条件</h2>
@@ -127,9 +133,11 @@ function PlaceCard({ result, siteName }: { result: DiagnosisResult; siteName: st
             source={c.elevation_source}
           />
           <ConditionRow label="気温（滞在中）" value={temp} source={c.temp_source} />
+          {sun && <ConditionRow label={sunLabel} value={sun} source={null} />}
           {/* 地形・地面は入力やAIの推定があった以前の診断だけ出す */}
           {c.terrain && <ConditionRow label="地形" value={c.terrain} source={c.terrain_source} />}
           {c.ground && <ConditionRow label="地面" value={c.ground} source={c.ground_source} />}
+          {sun && <div className="hint">山に囲まれた場所は、日の入りより早く暗くなります。</div>}
         </>
       ) : (
         loc && (

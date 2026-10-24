@@ -97,5 +97,7 @@ describe("ルールだけの診断", () => {
     expect(r.packing_list.find((p) => p.gear_id === "g1")).toBeDefined();
     expect(r.overall_advice).toContain("いちばん気を付けたいのは「夜の最低4℃");
     expect(r.overall_advice).toContain("足りないギアが");
+    // 場所と日付が分かるので日の入りの時刻から設営の目安を出す（経験が分からない人は初心者扱い）
+    expect(r.overall_advice).toMatch(/日の入りは1\d:\d\dごろ。山あいは早く暗くなるので、設営は1\d:\d\dごろまで/);
   });
 });

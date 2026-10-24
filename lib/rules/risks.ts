@@ -5,6 +5,7 @@ import type { Forecast } from "@/lib/weather/forecast";
 // - 天気（雨・風・気温・雷・雪・霧）：予報の数字と天気の種類から
 // - 季節・地域の一般的傾向（クマ・虫・ハチ）：都道府県・標高・月から
 // - 標高・入力内容：標高、移動手段、同行者から
+// - 行き帰りの路面凍結：最低気温と雨・雪、移動手段から
 
 const RAIN_EXTREME_MM = 50;
 
@@ -50,6 +51,26 @@ export function weatherRisks(stay: Forecast["stay"], nights: number, labels: str
     if (sev) out.push({ risk: `最高${max}℃。熱中症・日差し対策を`, severity: sev, basis: "forecast" });
   }
   return out.sort((a, b) => b.severity - a.severity);
+}
+
+/**
+ * 行き帰りの路面凍結（車のときだけ）。
+ * 路面は気温より冷えやすく、気温3℃以下で橋の上・日陰・峠道が凍ることがある。前後に雨や雪があると凍りやすい。
+ * minTemp は滞在する日（行き帰りの早朝を含む）の最低気温。
+ */
+export function roadRisks(c: { minTemp: number | null; wet: boolean; transport: string | null }): Risk[] {
+  if (c.minTemp === null || !c.transport || isWalking(c.transport)) return [];
+  const t = c.minTemp;
+  if (t <= 0 && c.wet) {
+    return [{ risk: `朝の最低${t}℃で雨や雪のあと。路面凍結のおそれが高い。スタッドレスタイヤかチェーンを`, severity: 4, basis: "forecast" }];
+  }
+  if (t <= 0) {
+    return [{ risk: `朝の最低${t}℃。行き帰りの路面凍結に注意。橋の上・日陰・峠道は特にゆっくり`, severity: 3, basis: "forecast" }];
+  }
+  if (t <= 3) {
+    return [{ risk: `朝の最低${t}℃。橋の上や日陰の道は凍ることがある`, severity: 2, basis: "forecast" }];
+  }
+  return [];
 }
 
 export const PREFECTURES = [
