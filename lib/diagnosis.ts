@@ -13,11 +13,10 @@ import {
   RISK_BASES,
   looksConsumable,
 } from "@/lib/domain";
-import { applyStableRisks, type RegionRisks } from "@/lib/stable-risks";
 import { addDays, type ForecastResult } from "@/lib/weather/forecast";
 import { normalizeTags } from "@/lib/tags";
 
-/** AIが返す生の診断結果（lib/ai/schemas.ts の DiagnosisOutputSchema と同形） */
+/** ルール（lib/rules/diagnose.ts）が組み立てる診断の材料。finalizeDiagnosis で検証・集計する */
 export interface RawDiagnosis {
   site_terrain?: string;
   site_ground?: string;
@@ -31,6 +30,8 @@ export interface RawDiagnosis {
     gear_id: string | null;
     /** 使うと減る物（燃料・食料・ゴミ袋など）か。古い出力にはない */
     consumable?: boolean;
+    /** どのキャンプでも持っていく定番の物か */
+    routine?: boolean;
   }[];
   overall_advice: string;
 }
@@ -157,8 +158,6 @@ export function finalizeDiagnosis(
     location?: PlaceRef | null;
     weather?: ForecastResult | null;
     plan?: CampPlanInput;
-    /** アプリが決めたリスク（天気・同じ場所と月の地域リスク）。AI の同じ種類のリスクと置き換える */
-    fixed?: { weather?: Risk[] | null; region?: RegionRisks | null };
   } = {},
 ): DiagnosisResult {
   const gearById = new Map(gears.map((g) => [g.id, g]));
@@ -190,6 +189,7 @@ export function finalizeDiagnosis(
       owned: Boolean(gear),
       is_base: Boolean(gear?.is_base),
       consumable: p.consumable ?? looksConsumable(gear?.name ?? name),
+      routine: p.routine,
     });
   }
 
@@ -208,10 +208,8 @@ export function finalizeDiagnosis(
     }
   }
 
-  const { environment: environment_risks, bio: bio_site_risks } = applyStableRisks(
-    { environment: raw.environment_risks.map(cleanRisk), bio: raw.bio_site_risks.map(cleanRisk) },
-    context.fixed ?? {},
-  );
+  const environment_risks = raw.environment_risks.map(cleanRisk);
+  const bio_site_risks = raw.bio_site_risks.map(cleanRisk);
   const owned_count = packing.filter((p) => p.owned).length;
   const total_count = packing.length;
 

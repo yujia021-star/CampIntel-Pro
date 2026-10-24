@@ -2,8 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
 
-// /s/… は診断結果の共有ページ（ログインしていない人も見られる）
-const PUBLIC_PATHS = ["/login", "/s"];
+// /s/… は診断結果の共有ページ（ログインしていない人も見られる）。/api/keepalive は Supabase を止めないための定期アクセス
+const PUBLIC_PATHS = ["/login", "/s", "/api/keepalive"];
 
 /** セッションcookieを更新し、未ログインならログイン画面へ送る。 */
 export async function updateSession(request: NextRequest) {
