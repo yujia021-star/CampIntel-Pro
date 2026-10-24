@@ -22,8 +22,8 @@ describe("classifyAiError", () => {
 describe("limitMessage", () => {
   it("機能名・上限回数・あと何分で使えるかを出す", () => {
     const now = Date.parse("2026-09-23T10:00:00Z");
-    expect(limitMessage("diagnose", "2026-09-23T09:15:30Z", now)).toBe(
-      "プラン診断は1時間に20回までです。あと16分ほどで使えるようになります。",
+    expect(limitMessage("gear_recognize", "2026-09-23T09:15:30Z", now)).toBe(
+      "写真からの入力は1時間に40回までです。あと16分ほどで使えるようになります。",
     );
     expect(limitMessage("gear_suggest", null, now)).toContain("60分");
   });

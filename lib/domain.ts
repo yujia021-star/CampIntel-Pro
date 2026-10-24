@@ -145,6 +145,8 @@ export interface PackingItem {
   is_base: boolean;
   /** 使うと減る物（燃料・食料・ゴミ袋など）。持っていても毎回の補充・残量確認が要る */
   consumable?: boolean;
+  /** どのキャンプでも持っていく定番の物（今回の条件で足した物ではない）。ルールで作った診断だけにある */
+  routine?: boolean;
 }
 
 const CONSUMABLE_WORDS =
@@ -178,6 +180,6 @@ export interface DiagnosisResult {
   stay?: { nights: number; start: string | null; end: string | null } | null;
   conditions?: SiteConditions | null;
   weather?: import("@/lib/weather/forecast").ForecastResult | null;
-  /** 診断に使った条件の指紋。同じ条件なら前回の結果を使い回す（AIの料金をかけない・結果をぶらさない） */
-  fingerprint?: string;
+  /** 診断に使ったその人の経験（「いつものAIに相談」に渡す） */
+  personal?: { level: string | null; tendency: string | null };
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ConsultAI } from "@/components/ConsultAI";
 import { NearbyCard } from "@/components/NearbyCard";
 import { ShareButton } from "@/components/ShareButton";
 import { dayLabel, WeatherCard } from "@/components/WeatherCard";
@@ -126,8 +127,9 @@ function PlaceCard({ result, siteName }: { result: DiagnosisResult; siteName: st
             source={c.elevation_source}
           />
           <ConditionRow label="気温（滞在中）" value={temp} source={c.temp_source} />
-          <ConditionRow label="地形" value={c.terrain} source={c.terrain_source} />
-          <ConditionRow label="地面" value={c.ground} source={c.ground_source} />
+          {/* 地形・地面は入力やAIの推定があった以前の診断だけ出す */}
+          {c.terrain && <ConditionRow label="地形" value={c.terrain} source={c.terrain_source} />}
+          {c.ground && <ConditionRow label="地面" value={c.ground} source={c.ground_source} />}
         </>
       ) : (
         loc && (
@@ -185,7 +187,10 @@ function PackRow({
  */
 function PackingCard({ result, ids }: { result: DiagnosisResult; ids: AffiliateIds }) {
   const affiliate = hasAffiliate(ids);
-  const need = result.packing_list.filter((p) => !p.owned && !isConsumable(p)).sort(byPriority);
+  const missing = result.packing_list.filter((p) => !p.owned && !isConsumable(p));
+  // 定番の物（どのキャンプでも使う物）でマイギアに登録していない物は、持っていることも多いので畳んで出す
+  const routine = missing.filter((p) => p.routine && p.priority !== "must");
+  const need = missing.filter((p) => !routine.includes(p)).sort(byPriority);
   const consumables = result.packing_list
     .filter((p) => isConsumable(p))
     .sort((a, b) => Number(a.owned) - Number(b.owned) || byPriority(a, b));
@@ -225,6 +230,20 @@ function PackingCard({ result, ids }: { result: DiagnosisResult; ids: AffiliateI
             ))}
           </div>
         </>
+      )}
+      {routine.length > 0 && (
+        <details className="pack-owned">
+          <summary>
+            <span className="pack-head">📋 いつもの持ち物（マイギア未登録 {routine.length}件）</span>
+            <span className="pack-summary muted">{routine.map((p) => p.item).join("・")}</span>
+          </summary>
+          <div className="checklist">
+            {routine.sort(byPriority).map((p, i) => (
+              <PackRow key={`${p.item}-${i}`} p={p} shop={ids} />
+            ))}
+          </div>
+          <p className="hint" style={{ marginBottom: 0 }}>持っている物はマイギアに登録すると、次からここに出なくなります。</p>
+        </details>
       )}
       {affiliate && <p className="hint">通販リンクには広告（アフィリエイト）を含みます。</p>}
 
@@ -343,6 +362,8 @@ export function DiagnosisView({
         </div>
       </div>
 
+      <ConsultAI result={result} campsite={siteName} companions={companions} transport={transport} />
+
       <div className="card">
         <h2>⚠️ 環境・気候リスク</h2>
         <RiskItems risks={result.environment_risks} />
@@ -353,7 +374,7 @@ export function DiagnosisView({
         <RiskItems risks={result.bio_site_risks} />
         {/* 根拠の説明は各リスクのラベルで足りるので、注意書きだけを短く添える */}
         <p className="hint" style={{ marginBottom: 0 }}>
-          ラベルは判断のもとにしたデータです。「季節・地域の一般的傾向」はAIの一般知識で、最新の出没・事故情報は含みません。警報は
+          ラベルは判断のもとにしたデータです。「季節・地域の一般的傾向」は都道府県・標高・季節からの目安で、最新の出没・事故情報は含みません。警報は
           <a href="https://www.jma.go.jp/bosai/warning/" target="_blank" rel="noreferrer">
             気象庁
           </a>
